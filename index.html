@@ -20,6 +20,7 @@
     input, select, textarea { padding:4px; margin:2px; }
     textarea { width: 120px; height: 40px; }
     #auth-container div { margin-bottom:1rem; }
+    #user-info { margin-bottom:1rem; font-style: italic; }
   </style>
 </head>
 <body>
@@ -50,6 +51,7 @@
 
   <!-- Zone app -->
   <div id="app-container" style="display:none;">
+    <div id="user-info"></div>
     <div>
       Recherche : <input id="searchInput" placeholder="Nom, prénom ou adresse" oninput="reload()" />
       Trier par : 
@@ -113,7 +115,7 @@
   async function resetPassword() {
     const email = document.getElementById("resetEmail").value;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "https://ephemeral-bombolone-223fb9.netlify.app" // ton site Netlify
+      redirectTo: "https://ephemeral-bombolone-223fb9.netlify.app"
     });
     if (error) alert("Erreur : " + error.message);
     else alert("Un email de réinitialisation a été envoyé.");
@@ -126,13 +128,17 @@
 
   async function checkUser() {
     const { data: { user } } = await supabase.auth.getUser();
+    console.log("Utilisateur connecté:", user); // DEBUG
+
     if (user) {
       document.getElementById("auth-container").style.display = "none";
       document.getElementById("app-container").style.display = "block";
+      document.getElementById("user-info").innerText = "Connecté en tant que : " + user.email;
       reload();
     } else {
       document.getElementById("auth-container").style.display = "block";
       document.getElementById("app-container").style.display = "none";
+      document.getElementById("user-info").innerText = "";
     }
   }
 
@@ -195,4 +201,3 @@
 </script>
 </body>
 </html>
-

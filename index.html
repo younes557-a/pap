@@ -1,109 +1,213 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
   <title>Porte-à-Porte</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-100 min-h-screen">
-  <div id="app" class="p-6"></div>
+<body class="bg-gray-100">
 
-  <script>
-    // ⚡ Configuration Supabase
-    const SUPABASE_URL = "https://trnquwaidbxjzfrisdnu.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM";
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <!-- Barre de navigation -->
+  <div class="bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold">📋 Porte-à-Porte</h1>
+    <div id="user-info" class="text-gray-700"></div>
+    <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded">Se déconnecter</button>
+  </div>
 
-    // Vérifie si l'utilisateur est connecté
-    async function checkAuth() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        // ⚡ Si pas connecté → redirection vers login.html
-        window.location.href = "login.html";
-      } else {
-        renderApp(session.user);
-      }
-    }
+  <!-- Barre d’outils -->
+  <div class="p-4 bg-white shadow mt-4 mx-4 rounded">
+    <div class="flex flex-wrap gap-2 mb-4">
+      <input type="file" id="csvFile" accept=".csv" class="border p-2 rounded">
+      <button onclick="importCSV()" class="bg-blue-500 text-white px-3 py-2 rounded">Importer un CSV</button>
+      <button onclick="exportCSV()" class="bg-gray-700 text-white px-3 py-2 rounded">Exporter le CSV</button>
+      <button onclick="exportFavorable()" class="bg-green-500 text-white px-3 py-2 rounded">Exporter Favorables</button>
+      <button onclick="exportFavorablesIndecis()" class="bg-orange-500 text-white px-3 py-2 rounded">Exporter Favorables + Indécis</button>
+    </div>
 
-    // ⚡ Affiche l'application si connecté
-    function renderApp(user) {
-      document.getElementById("app").innerHTML = `
-        <div class="flex justify-between items-center mb-6">
-          <h1 class="text-2xl font-bold">📋 Porte-à-Porte</h1>
-          <div class="flex items-center space-x-4">
-            <span>Connecté : <b>${user.email}</b></span>
-            <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded">Se déconnecter</button>
-          </div>
-        </div>
+    <!-- Filtres -->
+    <div class="flex flex-wrap gap-4">
+      <input type="text" id="search" placeholder="Nom, rue, adresse..." class="border p-2 rounded flex-1">
+      <select id="sortBy" class="border p-2 rounded">
+        <option value="bureau">Bureau</option>
+        <option value="nom">Nom</option>
+        <option value="prenom">Prénom</option>
+      </select>
+      <select id="sortOrder" class="border p-2 rounded">
+        <option value="asc">Asc</option>
+        <option value="desc">Desc</option>
+      </select>
+      <button onclick="applyFilters()" class="bg-blue-600 text-white px-3 py-2 rounded">Appliquer</button>
+    </div>
+  </div>
 
-        <div class="mb-4">
-          <label class="block mb-2 font-semibold">Importer un fichier CSV :</label>
-          <input type="file" id="csvFile" accept=".csv" class="border p-2" onchange="loadCSV(event)" />
-        </div>
+  <!-- Tableau électeurs -->
+  <div class="p-4">
+    <table class="w-full border-collapse bg-white shadow rounded" id="electeursTable">
+      <thead class="bg-gray-200">
+        <tr>
+          <th class="border p-2">Nom</th>
+          <th class="border p-2">Prénom</th>
+          <th class="border p-2">Bureau</th>
+          <th class="border p-2">Adresse</th>
+          <th class="border p-2">Email</th>
+          <th class="border p-2">Téléphone</th>
+          <th class="border p-2">Remarque</th>
+          <th class="border p-2">Statut</th>
+          <th class="border p-2">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="electeursBody"></tbody>
+    </table>
+  </div>
 
-        <div class="overflow-x-auto">
-          <table id="dataTable" class="min-w-full border border-gray-300 bg-white">
-            <thead class="bg-gray-200">
-              <tr>
-                <th class="border px-4 py-2">Nom</th>
-                <th class="border px-4 py-2">Prénom</th>
-                <th class="border px-4 py-2">Bureau</th>
-                <th class="border px-4 py-2">Adresse</th>
-                <th class="border px-4 py-2">Email</th>
-                <th class="border px-4 py-2">Téléphone</th>
-                <th class="border px-4 py-2">Remarque</th>
-                <th class="border px-4 py-2">Statut</th>
-                <th class="border px-4 py-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      `;
-    }
+<script>
+  // ⚡ Supabase config
+  const SUPABASE_URL = "https://trnquwaidbxjzfrisdnu.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM";
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Déconnexion
-    async function logout() {
-      await supabase.auth.signOut();
+  let electeurs = [];
+
+  // Charger utilisateur connecté
+  async function loadUser() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (user) {
+      document.getElementById("user-info").innerText = "Connecté : " + user.email;
+      loadElecteurs();
+    } else {
       window.location.href = "login.html";
     }
+  }
 
-    // Charger un CSV
-    function loadCSV(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+  // Déconnexion
+  async function logout() {
+    await supabaseClient.auth.signOut();
+    window.location.href = "login.html";
+  }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target.result;
-        parseCSV(text);
-      };
-      reader.readAsText(file);
+  // Charger électeurs depuis Supabase
+  async function loadElecteurs() {
+    const { data, error } = await supabaseClient.from("electeurs").select("*");
+    if (error) {
+      console.error(error);
+    } else {
+      electeurs = data;
+      renderTable();
     }
+  }
 
-    // Parser CSV simple
-    function parseCSV(text) {
-      const rows = text.split("\n").map(r => r.split(","));
-      const tbody = document.querySelector("#dataTable tbody");
-      tbody.innerHTML = "";
+  // Afficher le tableau
+  function renderTable() {
+    const tbody = document.getElementById("electeursBody");
+    tbody.innerHTML = "";
+    electeurs.forEach(row => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="border p-2">${row.nom || ""}</td>
+        <td class="border p-2">${row.prenom || ""}</td>
+        <td class="border p-2">${row.bureau || ""}</td>
+        <td class="border p-2">${row.adresse || ""}</td>
+        <td class="border p-2">${row.email || ""}</td>
+        <td class="border p-2">${row.telephone || ""}</td>
+        <td class="border p-2">${row.remarque || ""}</td>
+        <td class="border p-2">${row.statut || "-"}</td>
+        <td class="border p-2">
+          <button onclick="updateStatut('${row.id}','Favorable')" class="bg-green-500 text-white px-2 py-1 rounded">Favorable</button>
+          <button onclick="updateStatut('${row.id}','Défavorable')" class="bg-red-500 text-white px-2 py-1 rounded">Défavorable</button>
+          <button onclick="updateStatut('${row.id}','Indécis')" class="bg-yellow-500 text-white px-2 py-1 rounded">Indécis</button>
+          <button onclick="updateStatut('${row.id}','Absent')" class="bg-gray-500 text-white px-2 py-1 rounded">Absent</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
 
-      rows.slice(1).forEach(row => {
-        if (row.length < 2) return;
-        const tr = document.createElement("tr");
-        row.forEach(cell => {
-          const td = document.createElement("td");
-          td.classList.add("border", "px-4", "py-2");
-          td.textContent = cell.trim();
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-      });
+  // Mettre à jour le statut
+  async function updateStatut(id, statut) {
+    await supabaseClient.from("electeurs").update({ statut }).eq("id", id);
+    loadElecteurs();
+  }
+
+  // Import CSV → Supabase
+  async function importCSV() {
+    const file = document.getElementById("csvFile").files[0];
+    if (!file) return alert("Choisissez un fichier CSV !");
+    const text = await file.text();
+    const rows = text.split("\n").map(r => r.split(","));
+    const headers = rows.shift();
+
+    const data = rows.map(r => ({
+      nom: r[0] || "",
+      prenom: r[1] || "",
+      bureau: r[2] || "",
+      adresse: r[3] || "",
+      email: r[4] || "",
+      telephone: r[5] || "",
+      remarque: r[6] || "",
+      statut: r[7] || null,
+    }));
+
+    const { error } = await supabaseClient.from("electeurs").insert(data);
+    if (error) {
+      alert("Erreur import : " + error.message);
+    } else {
+      alert("Import réussi !");
+      loadElecteurs();
     }
+  }
 
-    // ⚡ Lancer la vérification
-    checkAuth();
-  </script>
+  // Export CSV complet
+  function exportCSV() {
+    downloadCSV(electeurs, "electeurs_complet.csv");
+  }
+
+  function exportFavorable() {
+    const fav = electeurs.filter(e => e.statut === "Favorable");
+    downloadCSV(fav, "electeurs_favorables.csv");
+  }
+
+  function exportFavorablesIndecis() {
+    const subset = electeurs.filter(e => e.statut === "Favorable" || e.statut === "Indécis");
+    downloadCSV(subset, "electeurs_fav_indecis.csv");
+  }
+
+  // Générateur CSV
+  function downloadCSV(data, filename) {
+    if (!data.length) return;
+    const headers = Object.keys(data[0]).join(",");
+    const rows = data.map(obj => Object.values(obj).join(",")).join("\n");
+    const blob = new Blob([headers + "\n" + rows], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+  }
+
+  // Appliquer filtres/recherche
+  function applyFilters() {
+    let filtered = [...electeurs];
+    const search = document.getElementById("search").value.toLowerCase();
+    if (search) {
+      filtered = filtered.filter(e =>
+        (e.nom || "").toLowerCase().includes(search) ||
+        (e.prenom || "").toLowerCase().includes(search) ||
+        (e.adresse || "").toLowerCase().includes(search)
+      );
+    }
+    const sortBy = document.getElementById("sortBy").value;
+    const sortOrder = document.getElementById("sortOrder").value;
+    filtered.sort((a, b) => {
+      if (a[sortBy] < b[sortBy]) return sortOrder === "asc" ? -1 : 1;
+      if (a[sortBy] > b[sortBy]) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+    electeurs = filtered;
+    renderTable();
+  }
+
+  // Lancer
+  loadUser();
+</script>
 </body>
 </html>

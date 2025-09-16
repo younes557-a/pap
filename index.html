@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Porte-à-Porte – Ris-Orangis</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  </head>
+  <body class="bg-gray-50 text-gray-900">
+    <header class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b">
+      <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+        <h1 class="text-xl font-semibold">🗳️ Porte-à-Porte</h1>
+        <div class="ml-auto flex items-center gap-2 flex-wrap">
+          <button id="btnExport" class="btn">Exporter le CSV (complet)</button>
+          <button id="btnExportView" class="btn-secondary">Exporter la vue</button>
+          <button id="btnExportFav" class="btn-green">Exporter Favorables</button>
+          <button id="btnExportFavInd" class="btn-amber">Exporter Favorables + Indécis</button>
+          <label class="btn cursor-pointer">
+            Importer un CSV
+            <input id="fileInput" type="file" accept=".csv,text/csv" class="hidden" />
+          </label>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-4 space-y-4">
+      <section class="card">
+        <h2 class="card-title">Filtres & Outils</h2>
+        <div class="grid md:grid-cols-4 gap-3">
+          <div class="space-y-2">
+            <label class="text-xs text-gray-600">Bureau de vote</label>
+            <select id="bureauFilter" class="input">
+              <option value="">Tous les bureaux</option>
+            </select>
+          </div>
+          <div class="space-y-2 md:col-span-2">
+            <label class="text-xs text-gray-600">Recherche</label>
+            <div class="flex gap-2">
+              <input id="searchInput" class="input flex-1" placeholder="Nom, rue, adresse…" />
+              <button id="btnSearch" class="btn-secondary">Chercher</button>
+              <button id="btnClearFilters" class="btn-tertiary">Réinitialiser</button>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <label class="text-xs text-gray-600">Tri</label>
+            <div class="grid grid-cols-2 gap-2">
+              <select id="sortColumn" class="input col-span-2">
+                <option value="composite" selected>Bureau &gt; Rue &gt; Nom</option>
+                <option value="bureau">Bureau (A→Z)</option>
+                <option value="rue">Rue (A→Z)</option>
+                <option value="nom">Nom (A→Z)</option>
+              </select>
+              <button id="sortToggle" class="btn-secondary">Asc</button>
+              <button id="btnApplySort" class="btn">Appliquer</button>
+            </div>
+          </div>
+        </div>
+        <div id="progress" class="mt-2 text-sm text-gray-700">Aucun fichier importé.</div>
+      </section>
+
+      <section class="card">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="card-title">Électeurs</h2>
+          <div class="flex items-center gap-2 text-sm">
+            <span>Par page :</span>
+            <select id="pageSize" class="input w-28">
+              <option value="500">500</option>
+              <option value="1000" selected>1000</option>
+              <option value="2000">2000</option>
+            </select>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="table" id="table">
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Prénom</th>
+                <th>Bureau de vote</th>
+                <th>Adresse</th>
+                <th>Email</th>
+                <th>Téléphone</th>
+                <th>Remarque</th>
+                <th>Statut</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <div class="flex items-center justify-between mt-3 text-sm">
+          <div id="pageInfo" class="text-gray-600">Page 1 / 1</div>
+          <div class="flex items-center gap-2">
+            <button id="btnPrev" class="btn-secondary">Précédent</button>
+            <button id="btnNext" class="btn-secondary">Suivant</button>
+            <span>Aller à :</span>
+            <input id="gotoInput" class="input w-20" type="number" min="1" value="1"/>
+            <button id="btnGoto" class="btn-secondary">Aller</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-gray-500">
+      Hors-ligne. Sauvegarde locale (navigateur).
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>

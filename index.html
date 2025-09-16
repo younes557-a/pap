@@ -7,136 +7,103 @@
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-100">
-
-  <div class="p-4 bg-white shadow-md flex justify-between items-center">
+  <div class="p-4 flex justify-between items-center bg-white shadow">
     <h1 class="text-xl font-bold">📋 Porte-à-Porte</h1>
-    <div>
-      <span id="userEmail" class="mr-4"></span>
-      <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded">Se déconnecter</button>
-    </div>
+    <div id="user-info"></div>
+    <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded">Se déconnecter</button>
   </div>
 
   <div class="p-4">
-    <div class="flex gap-2 mb-4">
-      <input type="file" id="csvFile" class="border p-2">
-      <button onclick="importCSV()" class="bg-blue-500 text-white px-4 py-2 rounded">Importer un CSV</button>
-      <button onclick="exportCSV()" class="bg-gray-600 text-white px-4 py-2 rounded">Exporter le CSV</button>
-    </div>
+    <input type="file" id="csvFile" accept=".csv" class="mb-2">
+    <button onclick="importCSV()" class="bg-blue-500 text-white px-4 py-2 rounded">Importer un CSV</button>
 
-    <table class="min-w-full bg-white border">
+    <table id="electeursTable" class="w-full mt-4 border">
       <thead>
         <tr class="bg-gray-200">
-          <th class="border px-2 py-1">Nom</th>
-          <th class="border px-2 py-1">Prénom</th>
-          <th class="border px-2 py-1">Bureau</th>
-          <th class="border px-2 py-1">Adresse</th>
-          <th class="border px-2 py-1">Email</th>
-          <th class="border px-2 py-1">Téléphone</th>
-          <th class="border px-2 py-1">Remarque</th>
-          <th class="border px-2 py-1">Statut</th>
-          <th class="border px-2 py-1">Actions</th>
+          <th class="p-2 border">Nom</th>
+          <th class="p-2 border">Prénom</th>
+          <th class="p-2 border">Bureau</th>
+          <th class="p-2 border">Adresse</th>
+          <th class="p-2 border">Email</th>
+          <th class="p-2 border">Téléphone</th>
+          <th class="p-2 border">Remarque</th>
+          <th class="p-2 border">Statut</th>
+          <th class="p-2 border">Actions</th>
         </tr>
       </thead>
-      <tbody id="tableBody"></tbody>
+      <tbody id="electeursBody"></tbody>
     </table>
   </div>
 
 <script>
-  // ⚡ Config Supabase
+  // ✅ Ton vrai Supabase
   const SUPABASE_URL = "https://trnquwaidbxjzfrisdnu.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // ✅ Vérifier utilisateur connecté
-  supabaseClient.auth.getUser().then(({ data, error }) => {
-    if (error || !data.user) {
+  // Vérifier si utilisateur connecté
+  supabaseClient.auth.getUser().then(({ data }) => {
+    if (!data.user) {
       window.location.href = "login.html";
     } else {
-      document.getElementById("userEmail").innerText = "Connecté : " + data.user.email;
-      loadData();
+      document.getElementById("user-info").innerText = "Connecté : " + data.user.email;
+      loadElecteurs();
     }
   });
 
-  // 🚪 Déconnexion
+  // Déconnexion
   async function logout() {
     await supabaseClient.auth.signOut();
     window.location.href = "login.html";
   }
 
-  // 📥 Charger les données
-  async function loadData() {
+  // Charger électeurs
+  async function loadElecteurs() {
     const { data, error } = await supabaseClient.from("electeurs").select("*");
     if (error) {
       alert("Erreur chargement : " + error.message);
       return;
     }
-    renderTable(data);
+    const body = document.getElementById("electeursBody");
+    body.innerHTML = "";
+    data.forEach(row => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="border p-2">${row.nom}</td>
+        <td class="border p-2">${row.prenom}</td>
+        <td class="border p-2">${row.bureau}</td>
+        <td class="border p-2">${row.adresse}</td>
+        <td class="border p-2">${row.email ?? ""}</td>
+        <td class="border p-2">${row.telephone ?? ""}</td>
+        <td class="border p-2">${row.remarque ?? ""}</td>
+        <td class="border p-2">${row.statut ?? "-"}</td>
+        <td class="border p-2">
+          <button onclick="updateStatut(${row.id}, 'Favorable')" class="bg-green-500 text-white px-2 py-1 rounded">Favorable</button>
+          <button onclick="updateStatut(${row.id}, 'Défavorable')" class="bg-red-500 text-white px-2 py-1 rounded">Défavorable</button>
+          <button onclick="updateStatut(${row.id}, 'Indécis')" class="bg-yellow-500 text-white px-2 py-1 rounded">Indécis</button>
+          <button onclick="updateStatut(${row.id}, 'Absent')" class="bg-gray-500 text-white px-2 py-1 rounded">Absent</button>
+        </td>
+      `;
+      body.appendChild(tr);
+    });
   }
 
-  // 📤 Mettre à jour statut
+  // Modifier statut
   async function updateStatut(id, statut) {
     const { error } = await supabaseClient.from("electeurs").update({ statut }).eq("id", id);
     if (error) {
       alert("Erreur maj : " + error.message);
     } else {
-      loadData();
+      loadElecteurs();
     }
   }
 
-  // 🖼️ Afficher le tableau
-  function renderTable(rows) {
-    const tbody = document.getElementById("tableBody");
-    tbody.innerHTML = "";
-    rows.forEach(r => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td class="border px-2 py-1">${r.nom || ""}</td>
-        <td class="border px-2 py-1">${r.prenom || ""}</td>
-        <td class="border px-2 py-1">${r.bureau || ""}</td>
-        <td class="border px-2 py-1">${r.adresse || ""}</td>
-        <td class="border px-2 py-1">${r.email || ""}</td>
-        <td class="border px-2 py-1">${r.telephone || ""}</td>
-        <td class="border px-2 py-1">${r.remarque || ""}</td>
-        <td class="border px-2 py-1">${r.statut || "-"}</td>
-        <td class="border px-2 py-1">
-          <button class="bg-green-500 text-white px-2 py-1 rounded" onclick="updateStatut(${r.id}, 'Favorable')">Favorable</button>
-          <button class="bg-red-500 text-white px-2 py-1 rounded" onclick="updateStatut(${r.id}, 'Défavorable')">Défavorable</button>
-          <button class="bg-yellow-500 text-white px-2 py-1 rounded" onclick="updateStatut(${r.id}, 'Indécis')">Indécis</button>
-          <button class="bg-gray-500 text-white px-2 py-1 rounded" onclick="updateStatut(${r.id}, 'Absent')">Absent</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  // 📥 Import CSV (à améliorer selon ton format exact)
+  // Import CSV
   async function importCSV() {
-    const fileInput = document.getElementById("csvFile");
-    if (!fileInput.files.length) {
-      alert("Choisis un fichier CSV !");
-      return;
-    }
-    alert("⚡ Import CSV à connecter au backend Supabase.");
-  }
-
-  // 📤 Export CSV
-  async function exportCSV() {
-    const { data, error } = await supabaseClient.from("electeurs").select("*");
-    if (error) {
-      alert("Erreur export : " + error.message);
-      return;
-    }
-    let csv = "Nom,Prénom,Bureau,Adresse,Email,Téléphone,Remarque,Statut\n";
-    data.forEach(r => {
-      csv += `${r.nom||""},${r.prenom||""},${r.bureau||""},${r.adresse||""},${r.email||""},${r.telephone||""},${r.remarque||""},${r.statut||""}\n`;
-    });
-    const blob = new Blob([csv], { type: "text/csv" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "electeurs.csv";
-    link.click();
+    const file = document.getElementById("csvFile").files[0];
+    if (!file) return alert("Choisis un fichier CSV");
+    alert("⚡ Import CSV pas encore branché à Supabase.");
   }
 </script>
-
 </body>
 </html>

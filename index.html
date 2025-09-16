@@ -1,48 +1,42 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
   <title>Porte-à-Porte</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding:20px; }
+    h1 { font-size: 22px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; background:#fff; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background:#eee; }
+    .menu { margin:15px 0; }
+    button { margin:5px; padding:8px 12px; cursor:pointer; }
+  </style>
 </head>
-<body class="bg-light">
+<body>
+  <h1>📋 Porte-à-Porte</h1>
+  <div id="auth"></div>
+  <div id="app" style="display:none;">
+    <p>Connecté : <span id="userEmail"></span> <button onclick="logout()">Se déconnecter</button></p>
 
-  <!-- Barre de navigation -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="#">📋 Porte-à-Porte</a>
-      <div class="d-flex">
-        <span id="userEmail" class="text-white me-3"></span>
-        <button id="logoutBtn" class="btn btn-danger btn-sm">Se déconnecter</button>
-      </div>
-    </div>
-  </nav>
-
-  <div class="container mt-4">
-    <!-- Upload CSV (réservé admin ou 1ere fois) -->
-    <div id="uploadSection" class="mb-3">
-      <label for="csvFile" class="form-label">Importer le fichier électeurs (CSV)</label>
-      <input type="file" id="csvFile" class="form-control" accept=".csv" />
-      <button id="uploadBtn" class="btn btn-primary mt-2">Charger dans la base</button>
+    <div class="menu">
+      <input type="file" id="csvFile" accept=".csv">
+      <button onclick="importCSV()">Importer un CSV</button>
+      <button onclick="exportCSV()">Exporter le CSV (complet)</button>
+      <button onclick="exportFilter('Favorable')">Exporter Favorables</button>
+      <button onclick="exportFilter('Indécis')">Exporter Favorables + Indécis</button>
+      <br>
+      <label>Bureau : <input id="filterBureau" oninput="loadElecteurs()"></label>
+      <label>Recherche : <input id="filterSearch" oninput="loadElecteurs()"></label>
     </div>
 
-    <!-- Tableau électeurs -->
-    <table id="electeursTable" class="table table-striped table-bordered">
-      <thead class="table-dark">
+    <table id="electeursTable">
+      <thead>
         <tr>
-          <th>Nom</th>
-          <th>Prénom(s)</th>
-          <th>Date de naissance</th>
-          <th>Adresse</th>
-          <th>Bureau de vote</th>
-          <th>Email</th>
-          <th>Téléphone</th>
-          <th>Remarque</th>
-          <th>Statut</th>
-          <th>Actions</th>
+          <th>Nom</th><th>Prénom</th><th>Bureau</th><th>Adresse</th>
+          <th>Email</th><th>Téléphone</th><th>Remarque</th><th>Statut</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -50,104 +44,128 @@
   </div>
 
   <script>
-    // 🔑 Configuration Supabase
-    const SUPABASE_URL = "https://trnquwaidbxjzfrisdnu.supabase.co"; // ← remplace si besoin
-    const SUPABASE_KEY = "TON_ANON_KEY"; // ⚠️ mets ici ton anon public key
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const SUPABASE_URL = "https://trnquwaidbxjzfrisdnu.supabase.co"; // ton URL
+    const SUPABASE_ANON_KEY = "TON_ANON_KEY"; // remplace par ta clé publique
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Elements DOM
-    const logoutBtn = document.getElementById("logoutBtn");
-    const userEmailSpan = document.getElementById("userEmail");
-    const uploadBtn = document.getElementById("uploadBtn");
-    const csvFileInput = document.getElementById("csvFile");
-    const tbody = document.querySelector("#electeursTable tbody");
+    let currentUser = null;
 
-    // 🔹 Charger données depuis Supabase
-    async function loadData() {
-      const { data, error } = await supabase.from("electeurs").select("*");
-      if (error) {
-        console.error("Erreur lecture :", error);
-        return;
-      }
-      renderTable(data);
+    // Vérifier session
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        currentUser = data.session.user;
+        showApp();
+      } else showLogin();
+    });
+
+    function showLogin() {
+      document.getElementById("auth").innerHTML = `
+        <h2>Connexion</h2>
+        <input id="email" placeholder="Email"><br>
+        <input id="password" type="password" placeholder="Mot de passe"><br>
+        <button onclick="login()">Se connecter</button>
+        <button onclick="signup()">Créer un compte</button>
+      `;
     }
 
-    // 🔹 Rendu du tableau
-    function renderTable(data) {
-      tbody.innerHTML = "";
-      data.forEach(row => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${row.nom}</td>
-          <td>${row.prenoms}</td>
-          <td>${row.naissance || ""}</td>
-          <td>${row.adresse || ""}</td>
-          <td>${row.bureau || ""}</td>
-          <td contenteditable="true">${row.email || ""}</td>
-          <td contenteditable="true">${row.telephone || ""}</td>
-          <td contenteditable="true">${row.remarque || ""}</td>
-          <td>${row.statut || "-"}</td>
-          <td>
-            <button class="btn btn-success btn-sm">Favorable</button>
-            <button class="btn btn-danger btn-sm">Défavorable</button>
-            <button class="btn btn-warning btn-sm">Indécis</button>
-            <button class="btn btn-secondary btn-sm">Absent</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
+    function showApp() {
+      document.getElementById("auth").style.display="none";
+      document.getElementById("app").style.display="block";
+      document.getElementById("userEmail").innerText = currentUser.email;
+      loadElecteurs();
     }
 
-    // 🔹 Importer CSV et stocker en base
-    uploadBtn.addEventListener("click", () => {
-      const file = csvFileInput.files[0];
-      if (!file) {
-        alert("Choisis un fichier CSV !");
-        return;
-      }
+    async function login() {
+      const email=document.getElementById("email").value;
+      const password=document.getElementById("password").value;
+      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+      if(error) alert(error.message); else location.reload();
+    }
+
+    async function signup() {
+      const email=document.getElementById("email").value;
+      const password=document.getElementById("password").value;
+      const { error } = await supabase.auth.signUp({ email, password });
+      if(error) alert(error.message); else alert("Vérifie ton email pour confirmer !");
+    }
+
+    async function logout() {
+      await supabase.auth.signOut();
+      location.reload();
+    }
+
+    // Import CSV vers Supabase
+    function importCSV() {
+      const file=document.getElementById("csvFile").files[0];
+      if(!file) return alert("Choisis un fichier CSV");
       Papa.parse(file, {
         header: true,
-        complete: async (results) => {
-          const formatted = results.data.map(row => ({
-            nom: (row["nom de naissance"] || "") + " " + (row["nom d’usage"] || ""),
-            prenoms: row["prénoms"] || "",
-            naissance: row["date de naissance"] || "",
-            adresse: (row["numéro de voie"] || "") + " " + (row["libellé de voie"] || ""),
-            bureau: row["libellé du bureau de vote"] || "",
-            email: "",
-            telephone: "",
-            remarque: "",
-            statut: "-"
-          }));
-          const { error } = await supabase.from("electeurs").insert(formatted);
-          if (error) {
-            console.error("Erreur insertion :", error);
-            alert("Erreur importation");
-          } else {
-            alert("Import réussi !");
-            loadData();
+        complete: async function(results) {
+          const rows=results.data.filter(r=>r.Nom && r.Prénom);
+          for(let row of rows){
+            await supabase.from("electeurs").insert({
+              nom: row.Nom,
+              prenom: row.Prénom,
+              bureau: row.Bureau,
+              adresse: row.Adresse,
+              email: row.Email || "",
+              telephone: row.Téléphone || "",
+              remarque: row.Remarque || "",
+              statut: row.Statut || "-"
+            });
           }
+          loadElecteurs();
         }
       });
-    });
-
-    // 🔹 Gestion session
-    async function checkSession() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        window.location.href = "index.html"; // retour login si pas connecté
-      } else {
-        userEmailSpan.textContent = "Connecté : " + session.user.email;
-        loadData();
-      }
     }
 
-    logoutBtn.addEventListener("click", async () => {
-      await supabase.auth.signOut();
-      window.location.href = "index.html";
-    });
+    // Charger données
+    async function loadElecteurs() {
+      let query = supabase.from("electeurs").select("*");
+      const bureau=document.getElementById("filterBureau").value;
+      const search=document.getElementById("filterSearch").value;
+      if(bureau) query=query.ilike("bureau", `%${bureau}%`);
+      if(search) query=query.or(`nom.ilike.%${search}%,prenom.ilike.%${search}%,adresse.ilike.%${search}%`);
+      const { data, error } = await query;
+      if(error) { console.error(error); return; }
+      const tbody=document.querySelector("#electeursTable tbody");
+      tbody.innerHTML="";
+      data.forEach(e=>{
+        tbody.innerHTML+=`
+          <tr>
+            <td>${e.nom||""}</td>
+            <td>${e.prenom||""}</td>
+            <td>${e.bureau||""}</td>
+            <td>${e.adresse||""}</td>
+            <td>${e.email||""}</td>
+            <td>${e.telephone||""}</td>
+            <td>${e.remarque||""}</td>
+            <td>${e.statut||"-"}</td>
+          </tr>
+        `;
+      });
+    }
 
-    checkSession();
+    // Export CSV
+    async function exportCSV() {
+      const { data } = await supabase.from("electeurs").select("*");
+      const csv = Papa.unparse(data);
+      downloadCSV(csv, "electeurs.csv");
+    }
+
+    async function exportFilter(type) {
+      const { data } = await supabase.from("electeurs").select("*").in("statut", type==="Indécis" ? ["Favorable","Indécis"] : ["Favorable"]);
+      const csv = Papa.unparse(data);
+      downloadCSV(csv, `electeurs_${type}.csv`);
+    }
+
+    function downloadCSV(csv, filename) {
+      const blob=new Blob([csv], { type:"text/csv;charset=utf-8;" });
+      const link=document.createElement("a");
+      link.href=URL.createObjectURL(blob);
+      link.download=filename;
+      link.click();
+    }
   </script>
 </body>
 </html>

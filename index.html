@@ -2,137 +2,193 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Porte-à-Porte</title>
-  <script src="https://unpkg.com/@supabase/supabase-js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
-<body>
-  <h1>📋 Porte-à-Porte</h1>
+<body class="bg-gray-100 min-h-screen">
 
-  <!-- Connexion / Inscription -->
-  <div id="auth-container">
-    <h2>Connexion bénévole</h2>
-    <input type="email" id="loginEmail" placeholder="Votre email">
-    <input type="password" id="loginPassword" placeholder="Mot de passe">
-    <button onclick="login()">Se connecter</button>
+  <!-- Auth container -->
+  <div id="auth-container" class="max-w-md mx-auto mt-10 p-6 bg-white rounded-xl shadow-md">
+    <h1 class="text-2xl font-bold mb-4">📋 Porte-à-Porte</h1>
 
-    <h3>Créer un compte</h3>
-    <input type="email" id="signupEmail" placeholder="Votre email">
-    <input type="password" id="signupPassword" placeholder="Mot de passe">
-    <button onclick="signup()">Créer le compte</button>
+    <h2 class="text-lg font-semibold mb-2">Connexion bénévole</h2>
+    <input id="loginEmail" type="email" placeholder="Votre email" class="border p-2 w-full mb-2">
+    <input id="loginPassword" type="password" placeholder="Mot de passe" class="border p-2 w-full mb-2">
+    <button onclick="login()" class="bg-blue-500 text-white px-4 py-2 rounded w-full">Se connecter</button>
 
-    <h3>Mot de passe oublié</h3>
-    <input type="email" id="resetEmail" placeholder="Votre email">
-    <button onclick="resetPassword()">Réinitialiser</button>
+    <h2 class="text-lg font-semibold mt-4 mb-2">Créer un compte</h2>
+    <input id="signupEmail" type="email" placeholder="Votre email" class="border p-2 w-full mb-2">
+    <input id="signupPassword" type="password" placeholder="Mot de passe" class="border p-2 w-full mb-2">
+    <button onclick="signup()" class="bg-green-500 text-white px-4 py-2 rounded w-full">Créer le compte</button>
+
+    <h2 class="text-lg font-semibold mt-4 mb-2">Mot de passe oublié</h2>
+    <input id="resetEmail" type="email" placeholder="Votre email" class="border p-2 w-full mb-2">
+    <button onclick="resetPassword()" class="bg-yellow-500 text-white px-4 py-2 rounded w-full">Réinitialiser</button>
   </div>
 
-  <!-- Formulaire reset -->
-  <div id="recovery-container" style="display:none;">
-    <h2>Réinitialiser le mot de passe</h2>
-    <input type="password" id="newPassword" placeholder="Nouveau mot de passe">
-    <input type="password" id="confirmPassword" placeholder="Confirmez le mot de passe">
-    <button onclick="confirmRecovery()">Confirmer</button>
-    <button onclick="backToLogin()">Retour connexion</button>
+  <!-- Reset container -->
+  <div id="recovery-container" class="hidden max-w-md mx-auto mt-10 p-6 bg-white rounded-xl shadow-md">
+    <h2 class="text-lg font-semibold mb-2">🔑 Réinitialiser le mot de passe</h2>
+    <input id="newPassword" type="password" placeholder="Nouveau mot de passe" class="border p-2 w-full mb-2">
+    <input id="confirmPassword" type="password" placeholder="Confirmer le mot de passe" class="border p-2 w-full mb-2">
+    <button onclick="confirmRecovery()" class="bg-blue-600 text-white px-4 py-2 rounded w-full">Valider</button>
+    <button onclick="logout()" class="bg-gray-400 text-white px-4 py-2 rounded w-full mt-2">Retour</button>
   </div>
 
-  <!-- Application -->
-  <div id="app-container" style="display:none;">
-    <h2 id="user-info"></h2>
-    <button onclick="logout()">Se déconnecter</button>
-    <p>👉 Ici viendra ton tableau électeurs</p>
+  <!-- App container -->
+  <div id="app-container" class="hidden p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-bold">📋 Porte-à-Porte</h1>
+      <div>
+        <span id="user-info" class="font-semibold mr-4"></span>
+        <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded">Se déconnecter</button>
+      </div>
+    </div>
+
+    <!-- Import CSV -->
+    <input type="file" id="csvFile" accept=".csv" class="mb-4">
+
+    <!-- Tableau électeurs -->
+    <div class="overflow-x-auto">
+      <table id="electeursTable" class="min-w-full bg-white border border-gray-300 text-sm">
+        <thead class="bg-gray-200">
+          <tr>
+            <th class="px-2 py-1 border">Nom</th>
+            <th class="px-2 py-1 border">Prénom</th>
+            <th class="px-2 py-1 border">Bureau</th>
+            <th class="px-2 py-1 border">Adresse</th>
+            <th class="px-2 py-1 border">Email</th>
+            <th class="px-2 py-1 border">Téléphone</th>
+            <th class="px-2 py-1 border">Remarque</th>
+            <th class="px-2 py-1 border">Statut</th>
+            <th class="px-2 py-1 border">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="electeursBody"></tbody>
+      </table>
+    </div>
   </div>
 
-  <script>
-    const supabase = window.supabase.createClient(
-      "https://trnquwaidbxjzfrisdnu.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM"
-    );
+<script>
+  const supabase = window.supabase.createClient(
+    "https://trnquwaidbxjzfrisdnu.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM"
+  );
 
-    // --- Connexion
-    async function login() {
-      const email = document.getElementById("loginEmail").value;
-      const password = document.getElementById("loginPassword").value;
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) alert("Erreur: " + error.message);
+  // --- AUTH ---
+  async function login() {
+    const email = document.getElementById("loginEmail").value;
+    const password = document.getElementById("loginPassword").value;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) alert("Erreur : " + error.message);
+  }
+
+  async function signup() {
+    const email = document.getElementById("signupEmail").value;
+    const password = document.getElementById("signupPassword").value;
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) alert("Erreur : " + error.message);
+    else alert("Vérifiez vos emails pour confirmer votre compte.");
+  }
+
+  async function resetPassword() {
+    const email = document.getElementById("resetEmail").value;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: "https://younes557-a.github.io/pap/"
+    });
+    if (error) alert("Erreur : " + error.message);
+    else alert("Email envoyé !");
+  }
+
+  async function confirmRecovery() {
+    const newPass = document.getElementById("newPassword").value;
+    const confirmPass = document.getElementById("confirmPassword").value;
+    if (newPass !== confirmPass) {
+      alert("Les mots de passe ne correspondent pas.");
+      return;
     }
-
-    // --- Inscription
-    async function signup() {
-      const email = document.getElementById("signupEmail").value;
-      const password = document.getElementById("signupPassword").value;
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) alert("Erreur: " + error.message);
-      else alert("Vérifiez votre email pour confirmer !");
-    }
-
-    // --- Reset
-    async function resetPassword() {
-      const email = document.getElementById("resetEmail").value;
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "https://younes557-a.github.io/pap/"
-      });
-      if (error) alert("Erreur: " + error.message);
-      else alert("Email envoyé !");
-    }
-
-    // --- Détection mode recovery
-    function handleRecovery() {
-      const hash = window.location.hash;
-      if (hash && hash.includes("type=recovery")) {
-        console.log("Mode recovery détecté");
-        document.getElementById("auth-container").style.display = "none";
-        document.getElementById("app-container").style.display = "none";
-        document.getElementById("recovery-container").style.display = "block";
-      }
-    }
-
-    // --- Confirmer nouveau mot de passe
-    async function confirmRecovery() {
-      const newPass = document.getElementById("newPassword").value;
-      const confirmPass = document.getElementById("confirmPassword").value;
-      if (newPass !== confirmPass) {
-        alert("Les mots de passe ne correspondent pas.");
-        return;
-      }
-      const { error } = await supabase.auth.updateUser({ password: newPass });
-      if (error) alert("Erreur: " + error.message);
-      else {
-        alert("Mot de passe changé ✅");
-        window.location.hash = "";
-        checkUser();
-      }
-    }
-
-    function backToLogin() {
-      document.getElementById("recovery-container").style.display = "none";
-      document.getElementById("auth-container").style.display = "block";
-    }
-
-    // --- Logout
-    async function logout() {
-      await supabase.auth.signOut();
+    const { error } = await supabase.auth.updateUser({ password: newPass });
+    if (error) alert("Erreur : " + error.message);
+    else {
+      alert("Mot de passe changé !");
+      window.location.hash = "";
       checkUser();
     }
+  }
 
-    // --- Vérif session
-    async function checkUser() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        document.getElementById("auth-container").style.display = "none";
-        document.getElementById("recovery-container").style.display = "none";
-        document.getElementById("app-container").style.display = "block";
-        document.getElementById("user-info").innerText = "Connecté : " + user.email;
-      } else {
-        document.getElementById("auth-container").style.display = "block";
-        document.getElementById("recovery-container").style.display = "none";
-        document.getElementById("app-container").style.display = "none";
-      }
-    }
-
-    supabase.auth.onAuthStateChange(() => checkUser());
+  async function logout() {
+    await supabase.auth.signOut();
     checkUser();
-    handleRecovery();
-  </script>
+  }
+
+  async function checkUser() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      document.getElementById("auth-container").style.display = "none";
+      document.getElementById("recovery-container").style.display = "none";
+      document.getElementById("app-container").style.display = "block";
+      document.getElementById("user-info").innerText = "Connecté : " + user.email;
+    } else {
+      document.getElementById("auth-container").style.display = "block";
+      document.getElementById("app-container").style.display = "none";
+      document.getElementById("recovery-container").style.display = "none";
+    }
+  }
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "PASSWORD_RECOVERY") {
+      document.getElementById("auth-container").style.display = "none";
+      document.getElementById("app-container").style.display = "none";
+      document.getElementById("recovery-container").style.display = "block";
+    }
+    checkUser();
+  });
+  checkUser();
+
+  // --- CSV IMPORT ---
+  document.getElementById("csvFile").addEventListener("change", function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const rows = e.target.result.split("\n").map(r => r.split(","));
+      const tbody = document.getElementById("electeursBody");
+      tbody.innerHTML = "";
+      rows.slice(1).forEach((row, i) => {
+        if (row.length < 4) return;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="border px-2">${row[0]}</td>
+          <td class="border px-2">${row[1]}</td>
+          <td class="border px-2">${row[2]}</td>
+          <td class="border px-2">${row[3]}</td>
+          <td class="border px-2"><input type="email" class="w-full border"></td>
+          <td class="border px-2"><input type="tel" class="w-full border"></td>
+          <td class="border px-2"><input type="text" class="w-full border"></td>
+          <td class="border px-2" id="status-${i}">-</td>
+          <td class="border px-2">
+            <button onclick="setStatus(${i}, 'Favorable')" class="bg-green-500 text-white px-2 py-1 rounded">Favorable</button>
+            <button onclick="setStatus(${i}, 'Défavorable')" class="bg-red-500 text-white px-2 py-1 rounded">Défavorable</button>
+            <button onclick="setStatus(${i}, 'Indécis')" class="bg-yellow-500 text-white px-2 py-1 rounded">Indécis</button>
+            <button onclick="setStatus(${i}, 'Absent')" class="bg-gray-500 text-white px-2 py-1 rounded">Absent</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    };
+    reader.readAsText(file, "UTF-8");
+  });
+
+  function setStatus(id, status) {
+    const td = document.getElementById("status-" + id);
+    td.textContent = status;
+    const tr = td.parentElement;
+    tr.classList.remove("bg-green-100", "bg-red-100");
+    if (status === "Favorable") tr.classList.add("bg-green-100");
+    if (status === "Défavorable") tr.classList.add("bg-red-100");
+  }
+</script>
 </body>
 </html>
-

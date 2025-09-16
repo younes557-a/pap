@@ -9,7 +9,7 @@
 <body>
   <h1>📋 Porte-à-Porte</h1>
 
-  <!-- Auth -->
+  <!-- Connexion / Inscription -->
   <div id="auth-container">
     <h2>Connexion bénévole</h2>
     <input type="email" id="loginEmail" placeholder="Votre email">
@@ -26,20 +26,20 @@
     <button onclick="resetPassword()">Réinitialiser</button>
   </div>
 
-  <!-- Recovery form -->
+  <!-- Formulaire reset -->
   <div id="recovery-container" style="display:none;">
-    <h2>Réinitialiser votre mot de passe</h2>
+    <h2>Réinitialiser le mot de passe</h2>
     <input type="password" id="newPassword" placeholder="Nouveau mot de passe">
     <input type="password" id="confirmPassword" placeholder="Confirmez le mot de passe">
     <button onclick="confirmRecovery()">Confirmer</button>
-    <button onclick="backToLogin()">Retour à la connexion</button>
+    <button onclick="backToLogin()">Retour connexion</button>
   </div>
 
-  <!-- App -->
+  <!-- Application -->
   <div id="app-container" style="display:none;">
     <h2 id="user-info"></h2>
     <button onclick="logout()">Se déconnecter</button>
-    <p>👉 Ici tu mettras ton application (tableau électeurs, etc.)</p>
+    <p>👉 Ici viendra ton tableau électeurs</p>
   </div>
 
   <script>
@@ -53,32 +53,33 @@
       const email = document.getElementById("loginEmail").value;
       const password = document.getElementById("loginPassword").value;
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) alert("Erreur connexion: " + error.message);
+      if (error) alert("Erreur: " + error.message);
     }
 
-    // --- Création compte
+    // --- Inscription
     async function signup() {
       const email = document.getElementById("signupEmail").value;
       const password = document.getElementById("signupPassword").value;
       const { error } = await supabase.auth.signUp({ email, password });
-      if (error) alert("Erreur inscription: " + error.message);
-      else alert("Vérifiez votre email pour confirmer le compte !");
+      if (error) alert("Erreur: " + error.message);
+      else alert("Vérifiez votre email pour confirmer !");
     }
 
-    // --- Demande reset
+    // --- Reset
     async function resetPassword() {
       const email = document.getElementById("resetEmail").value;
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: "https://younes557-a.github.io/pap/"
       });
       if (error) alert("Erreur: " + error.message);
-      else alert("Email de réinitialisation envoyé !");
+      else alert("Email envoyé !");
     }
 
-    // --- Détection recovery
-    async function handleRecovery() {
+    // --- Détection mode recovery
+    function handleRecovery() {
       const hash = window.location.hash;
-      if (hash.includes("type=recovery")) {
+      if (hash && hash.includes("type=recovery")) {
+        console.log("Mode recovery détecté");
         document.getElementById("auth-container").style.display = "none";
         document.getElementById("app-container").style.display = "none";
         document.getElementById("recovery-container").style.display = "block";
@@ -96,7 +97,7 @@
       const { error } = await supabase.auth.updateUser({ password: newPass });
       if (error) alert("Erreur: " + error.message);
       else {
-        alert("Mot de passe mis à jour avec succès !");
+        alert("Mot de passe changé ✅");
         window.location.hash = "";
         checkUser();
       }
@@ -107,13 +108,13 @@
       document.getElementById("auth-container").style.display = "block";
     }
 
-    // --- Déconnexion
+    // --- Logout
     async function logout() {
       await supabase.auth.signOut();
       checkUser();
     }
 
-    // --- Vérification utilisateur
+    // --- Vérif session
     async function checkUser() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -134,3 +135,4 @@
   </script>
 </body>
 </html>
+

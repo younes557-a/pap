@@ -17,8 +17,8 @@
     </div>
   </nav>
 
-  <!-- Barre filtres -->
-  <div class="bg-gray-50 shadow p-4 flex flex-wrap gap-4 items-center">
+  <!-- Outils -->
+  <div class="bg-gray-50 shadow p-4 flex flex-wrap gap-4 items-end">
     <div>
       <label class="block text-sm font-medium">Bureau de vote</label>
       <select id="filter-bureau" class="border rounded px-2 py-1" onchange="loadVoters()">
@@ -31,7 +31,9 @@
     </div>
     <button onclick="loadVoters()" class="bg-blue-500 text-white px-3 py-1 rounded">Chercher</button>
     <button onclick="resetFilters()" class="bg-gray-300 px-3 py-1 rounded">Réinitialiser</button>
-    <button onclick="exportCSV()" class="bg-green-500 text-white px-3 py-1 rounded">Exporter CSV</button>
+    <button onclick="exportCSV('all')" class="bg-green-500 text-white px-3 py-1 rounded">Exporter CSV (complet)</button>
+    <button onclick="exportCSV('favorables')" class="bg-green-600 text-white px-3 py-1 rounded">Exporter Favorables</button>
+    <button onclick="exportCSV('favorables-indecis')" class="bg-orange-500 text-white px-3 py-1 rounded">Exporter Favorables + Indécis</button>
   </div>
 
   <!-- Tableau -->
@@ -107,14 +109,21 @@
           <td class="border px-2">${r.telephone || ""}</td>
           <td class="border px-2">${r.remarque || ""}</td>
           <td class="border px-2">${r.statut || "-"}</td>
-          <td class="border px-2">
-            <button class="bg-green-500 text-white px-2">Favorable</button>
-            <button class="bg-red-500 text-white px-2">Défavorable</button>
-            <button class="bg-yellow-500 text-white px-2">Indécis</button>
+          <td class="border px-2 space-x-1">
+            <button onclick="updateStatut('${r.id}','Favorable')" class="bg-green-500 text-white px-2">Favorable</button>
+            <button onclick="updateStatut('${r.id}','Défavorable')" class="bg-red-500 text-white px-2">Défavorable</button>
+            <button onclick="updateStatut('${r.id}','Indécis')" class="bg-yellow-500 text-white px-2">Indécis</button>
           </td>
         </tr>
       `;
     });
+  }
+
+  // ⚡ Mise à jour statut
+  async function updateStatut(id, statut) {
+    let { error } = await supabaseClient.from("voters").update({ statut }).eq("id", id);
+    if (error) alert("Erreur MAJ : " + error.message);
+    else loadVoters();
   }
 
   // ⚡ Options bureau
@@ -128,8 +137,29 @@
   }
 
   // ⚡ Export CSV
-  function exportCSV() {
-    alert("⚠️ Fonction d'export CSV à brancher (prochaine étape).");
+  async function exportCSV(type) {
+    let query = supabaseClient.from("voters").select("*");
+    if (type === "favorables") query = query.eq("statut", "Favorable");
+    if (type === "favorables-indecis") query = query.in("statut", ["Favorable", "Indécis"]);
+
+    let { data, error } = await query;
+    if (error) {
+      alert("Erreur export : " + error.message);
+      return;
+    }
+
+    let csv = "Nom,Prénom,Bureau,Adresse,Email,Téléphone,Remarque,Statut\n";
+    data.forEach(r => {
+      csv += `"${r.nom||""}","${r.prenom||""}","${r.bureau||""}","${r.adresse||""}","${r.email||""}","${r.telephone||""}","${r.remarque||""}","${r.statut||""}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "export.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   // ⚡ Reset filtres

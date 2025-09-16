@@ -3,137 +3,152 @@
 <head>
   <meta charset="UTF-8">
   <title>Porte-à-Porte</title>
-  <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-
-    // === CONFIG SUPABASE ===
-    const SUPABASE_URL = "https://trnquwaidbxjzfrisdnu.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM";
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    const authDiv = document.getElementById("auth");
-    const appDiv = document.getElementById("app");
-    const votersTable = document.getElementById("votersTable");
-
-    // === Vérification utilisateur ===
-    async function checkUser() {
-      const { data } = await supabase.auth.getUser();
-      if (data.user) {
-        authDiv.style.display = "none";
-        appDiv.style.display = "block";
-        document.getElementById("userEmail").innerText = data.user.email;
-        loadVoters();
-      } else {
-        authDiv.style.display = "block";
-        appDiv.style.display = "none";
-      }
-    }
-
-    // === Auth ===
-    window.login = async function () {
-      const email = document.getElementById("loginEmail").value;
-      const password = document.getElementById("loginPassword").value;
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) alert("Erreur connexion: " + error.message);
-      checkUser();
-    }
-
-    window.signup = async function () {
-      const email = document.getElementById("signupEmail").value;
-      const password = document.getElementById("signupPassword").value;
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) alert("Erreur inscription: " + error.message);
-      else alert("Vérifiez vos mails pour confirmer !");
-    }
-
-    window.resetPassword = async function () {
-      const email = document.getElementById("resetEmail").value;
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "https://younes557-a.github.io/pap/"
-      });
-      if (error) alert("Erreur: " + error.message);
-      else alert("Email de réinitialisation envoyé !");
-    }
-
-    window.logout = async function () {
-      await supabase.auth.signOut();
-      checkUser();
-    }
-
-    // === Charger électeurs ===
-    async function loadVoters() {
-      const { data, error } = await supabase.from("voters").select("*");
-      if (error) {
-        alert("Erreur chargement électeurs: " + error.message);
-        return;
-      }
-      renderVoters(data);
-    }
-
-    function renderVoters(voters) {
-      votersTable.innerHTML = "";
-      voters.forEach(v => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${v.nom || ""}</td>
-          <td>${v.prenom || ""}</td>
-          <td>${v.bureau || ""}</td>
-          <td>${v.adresse || ""}</td>
-          <td><input type="text" value="${v.email || ""}" onchange="updateField(${v.id}, 'email', this.value)"></td>
-          <td><input type="text" value="${v.telephone || ""}" onchange="updateField(${v.id}, 'telephone', this.value)"></td>
-          <td><input type="text" value="${v.remarque || ""}" onchange="updateField(${v.id}, 'remarque', this.value)"></td>
-          <td>${v.statut || "-"}</td>
-          <td>
-            <button onclick="updateField(${v.id}, 'statut', 'Favorable')" style="background:#4CAF50;color:white">Favorable</button>
-            <button onclick="updateField(${v.id}, 'statut', 'Défavorable')" style="background:#f44336;color:white">Défavorable</button>
-            <button onclick="updateField(${v.id}, 'statut', 'Indécis')" style="background:#ff9800;color:white">Indécis</button>
-            <button onclick="updateField(${v.id}, 'statut', 'Absent')" style="background:#607d8b;color:white">Absent</button>
-          </td>
-        `;
-        votersTable.appendChild(tr);
-      });
-    }
-
-    // === Update ===
-    window.updateField = async function (id, field, value) {
-      const { error } = await supabase.from("voters").update({ [field]: value }).eq("id", id);
-      if (error) alert("Erreur update: " + error.message);
-      else loadVoters();
-    };
-
-    checkUser();
-  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
-<body>
-  <!-- AUTH -->
-  <div id="auth">
-    <h2>Connexion bénévole</h2>
-    <input id="loginEmail" placeholder="Email">
-    <input id="loginPassword" type="password" placeholder="Mot de passe">
-    <button onclick="login()">Se connecter</button>
+<body class="bg-gray-100">
 
-    <h3>Créer un compte</h3>
-    <input id="signupEmail" placeholder="Email">
-    <input id="signupPassword" type="password" placeholder="Mot de passe">
-    <button onclick="signup()">Créer le compte</button>
+  <!-- Barre du haut -->
+  <nav class="bg-white shadow-md p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold">📋 Porte-à-Porte</h1>
+    <div>
+      <span id="user-email" class="mr-4 text-gray-700"></span>
+      <button onclick="logout()" class="bg-red-500 text-white px-3 py-1 rounded">Se déconnecter</button>
+    </div>
+  </nav>
 
-    <h3>Mot de passe oublié</h3>
-    <input id="resetEmail" placeholder="Email">
-    <button onclick="resetPassword()">Réinitialiser</button>
+  <!-- Barre filtres -->
+  <div class="bg-gray-50 shadow p-4 flex flex-wrap gap-4 items-center">
+    <div>
+      <label class="block text-sm font-medium">Bureau de vote</label>
+      <select id="filter-bureau" class="border rounded px-2 py-1" onchange="loadVoters()">
+        <option value="">Tous</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-sm font-medium">Recherche</label>
+      <input id="search" type="text" placeholder="Nom, rue..." class="border rounded px-2 py-1">
+    </div>
+    <button onclick="loadVoters()" class="bg-blue-500 text-white px-3 py-1 rounded">Chercher</button>
+    <button onclick="resetFilters()" class="bg-gray-300 px-3 py-1 rounded">Réinitialiser</button>
+    <button onclick="exportCSV()" class="bg-green-500 text-white px-3 py-1 rounded">Exporter CSV</button>
   </div>
 
-  <!-- APP -->
-  <div id="app" style="display:none">
-    <h2>📋 Porte-à-Porte</h2>
-    <p>Connecté : <span id="userEmail"></span> <button onclick="logout()">Se déconnecter</button></p>
-    <table border="1" width="100%">
-      <thead>
+  <!-- Tableau -->
+  <div class="p-4 overflow-x-auto">
+    <table class="w-full border border-gray-300 bg-white">
+      <thead class="bg-gray-200">
         <tr>
-          <th>Nom</th><th>Prénom</th><th>Bureau</th><th>Adresse</th><th>Email</th><th>Téléphone</th><th>Remarque</th><th>Statut</th><th>Actions</th>
+          <th class="border px-2 py-1">Nom</th>
+          <th class="border px-2 py-1">Prénom</th>
+          <th class="border px-2 py-1">Bureau</th>
+          <th class="border px-2 py-1">Adresse</th>
+          <th class="border px-2 py-1">Email</th>
+          <th class="border px-2 py-1">Téléphone</th>
+          <th class="border px-2 py-1">Remarque</th>
+          <th class="border px-2 py-1">Statut</th>
+          <th class="border px-2 py-1">Actions</th>
         </tr>
       </thead>
-      <tbody id="votersTable"></tbody>
+      <tbody id="table-body"></tbody>
     </table>
   </div>
+
+<script>
+  // ⚡ Config Supabase
+  const SUPABASE_URL = "https://trnquwaidbxjzfrisdnu.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM";
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // ⚡ Vérifier session
+  async function checkSession() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) {
+      window.location.href = "login.html";
+    } else {
+      document.getElementById("user-email").innerText = "Connecté : " + session.user.email;
+    }
+  }
+
+  checkSession();
+
+  // ⚡ Charger électeurs
+  async function loadVoters() {
+    let query = supabaseClient.from("voters").select("*");
+
+    const bureau = document.getElementById("filter-bureau").value;
+    const search = document.getElementById("search").value;
+
+    if (bureau) query = query.eq("bureau", bureau);
+    if (search) query = query.ilike("nom", `%${search}%`);
+
+    let { data, error } = await query;
+    if (error) {
+      alert("Erreur : " + error.message);
+      return;
+    }
+
+    renderTable(data);
+    fillBureauOptions(data);
+  }
+
+  // ⚡ Remplir tableau
+  function renderTable(rows) {
+    const tbody = document.getElementById("table-body");
+    tbody.innerHTML = "";
+    rows.forEach(r => {
+      tbody.innerHTML += `
+        <tr class="border">
+          <td class="border px-2">${r.nom || ""}</td>
+          <td class="border px-2">${r.prenom || ""}</td>
+          <td class="border px-2">${r.bureau || ""}</td>
+          <td class="border px-2">${r.adresse || ""}</td>
+          <td class="border px-2">${r.email || ""}</td>
+          <td class="border px-2">${r.telephone || ""}</td>
+          <td class="border px-2">${r.remarque || ""}</td>
+          <td class="border px-2">${r.statut || "-"}</td>
+          <td class="border px-2">
+            <button class="bg-green-500 text-white px-2">Favorable</button>
+            <button class="bg-red-500 text-white px-2">Défavorable</button>
+            <button class="bg-yellow-500 text-white px-2">Indécis</button>
+          </td>
+        </tr>
+      `;
+    });
+  }
+
+  // ⚡ Options bureau
+  function fillBureauOptions(rows) {
+    const select = document.getElementById("filter-bureau");
+    const values = [...new Set(rows.map(r => r.bureau).filter(Boolean))];
+    select.innerHTML = '<option value="">Tous</option>';
+    values.forEach(b => {
+      select.innerHTML += `<option value="${b}">${b}</option>`;
+    });
+  }
+
+  // ⚡ Export CSV
+  function exportCSV() {
+    alert("⚠️ Fonction d'export CSV à brancher (prochaine étape).");
+  }
+
+  // ⚡ Reset filtres
+  function resetFilters() {
+    document.getElementById("filter-bureau").value = "";
+    document.getElementById("search").value = "";
+    loadVoters();
+  }
+
+  // ⚡ Logout
+  async function logout() {
+    await supabaseClient.auth.signOut();
+    window.location.href = "login.html";
+  }
+
+  // Charger initialement
+  loadVoters();
+</script>
+
 </body>
 </html>
+

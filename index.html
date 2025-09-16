@@ -3,170 +3,144 @@
 <head>
   <meta charset="UTF-8">
   <title>Porte-à-Porte</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; background:#f5f5f5; margin:0; padding:20px; }
-    h1 { font-size: 22px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 20px; background:#fff; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    th { background:#eee; }
-    .menu { margin:15px 0; }
-    button { margin:5px; padding:8px 12px; cursor:pointer; }
-  </style>
-</head>
-<body>
-  <h1>📋 Porte-à-Porte</h1>
-  <div id="auth"></div>
-  <div id="app" style="display:none;">
-    <p>Connecté : <span id="userEmail"></span> <button onclick="logout()">Se déconnecter</button></p>
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-    <div class="menu">
-      <input type="file" id="csvFile" accept=".csv">
-      <button onclick="importCSV()">Importer un CSV</button>
-      <button onclick="exportCSV()">Exporter le CSV (complet)</button>
-      <button onclick="exportFilter('Favorable')">Exporter Favorables</button>
-      <button onclick="exportFilter('Indécis')">Exporter Favorables + Indécis</button>
-      <br>
-      <label>Bureau : <input id="filterBureau" oninput="loadElecteurs()"></label>
-      <label>Recherche : <input id="filterSearch" oninput="loadElecteurs()"></label>
-    </div>
+    // === CONFIG SUPABASE ===
+    const SUPABASE_URL = "https://trnquwaidbxjzfrisdnu.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    <table id="electeursTable">
-      <thead>
-        <tr>
-          <th>Nom</th><th>Prénom</th><th>Bureau</th><th>Adresse</th>
-          <th>Email</th><th>Téléphone</th><th>Remarque</th><th>Statut</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
+    // === DOM Elements ===
+    const authDiv = document.getElementById("auth");
+    const appDiv = document.getElementById("app");
+    const votersTable = document.getElementById("votersTable");
 
-  <script>
-    const SUPABASE_URL = "https://trnquwaidbxjzfrisdnu.supabase.co"; // ton URL
-    const SUPABASE_ANON_KEY = "TON_ANON_KEY"; // remplace par ta clé publique
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    let currentUser = null;
-
-    // Vérifier session
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        currentUser = data.session.user;
-        showApp();
-      } else showLogin();
-    });
-
-    function showLogin() {
-      document.getElementById("auth").innerHTML = `
-        <h2>Connexion</h2>
-        <input id="email" placeholder="Email"><br>
-        <input id="password" type="password" placeholder="Mot de passe"><br>
-        <button onclick="login()">Se connecter</button>
-        <button onclick="signup()">Créer un compte</button>
-      `;
+    // === Gestion de l'état utilisateur ===
+    async function checkUser() {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        authDiv.style.display = "none";
+        appDiv.style.display = "block";
+        document.getElementById("userEmail").innerText = data.user.email;
+        loadVoters();
+      } else {
+        authDiv.style.display = "block";
+        appDiv.style.display = "none";
+      }
     }
 
-    function showApp() {
-      document.getElementById("auth").style.display="none";
-      document.getElementById("app").style.display="block";
-      document.getElementById("userEmail").innerText = currentUser.email;
-      loadElecteurs();
-    }
-
+    // === Authentification ===
     async function login() {
-      const email=document.getElementById("email").value;
-      const password=document.getElementById("password").value;
-      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
-      if(error) alert(error.message); else location.reload();
+      const email = document.getElementById("loginEmail").value;
+      const password = document.getElementById("loginPassword").value;
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) alert("Erreur connexion: " + error.message);
+      checkUser();
     }
 
     async function signup() {
-      const email=document.getElementById("email").value;
-      const password=document.getElementById("password").value;
+      const email = document.getElementById("signupEmail").value;
+      const password = document.getElementById("signupPassword").value;
       const { error } = await supabase.auth.signUp({ email, password });
-      if(error) alert(error.message); else alert("Vérifie ton email pour confirmer !");
+      if (error) alert("Erreur inscription: " + error.message);
+      else alert("Vérifiez vos mails pour confirmer l'inscription !");
+    }
+
+    async function resetPassword() {
+      const email = document.getElementById("resetEmail").value;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: "https://younes557-a.github.io/pap/"
+      });
+      if (error) alert("Erreur: " + error.message);
+      else alert("Email de réinitialisation envoyé !");
     }
 
     async function logout() {
       await supabase.auth.signOut();
-      location.reload();
+      checkUser();
     }
 
-    // Import CSV vers Supabase
-    function importCSV() {
-      const file=document.getElementById("csvFile").files[0];
-      if(!file) return alert("Choisis un fichier CSV");
-      Papa.parse(file, {
-        header: true,
-        complete: async function(results) {
-          const rows=results.data.filter(r=>r.Nom && r.Prénom);
-          for(let row of rows){
-            await supabase.from("electeurs").insert({
-              nom: row.Nom,
-              prenom: row.Prénom,
-              bureau: row.Bureau,
-              adresse: row.Adresse,
-              email: row.Email || "",
-              telephone: row.Téléphone || "",
-              remarque: row.Remarque || "",
-              statut: row.Statut || "-"
-            });
-          }
-          loadElecteurs();
-        }
-      });
+    // === Charger les électeurs depuis Supabase ===
+    async function loadVoters() {
+      const { data, error } = await supabase.from("voters").select("*");
+      if (error) {
+        alert("Erreur chargement électeurs: " + error.message);
+        return;
+      }
+      renderVoters(data);
     }
 
-    // Charger données
-    async function loadElecteurs() {
-      let query = supabase.from("electeurs").select("*");
-      const bureau=document.getElementById("filterBureau").value;
-      const search=document.getElementById("filterSearch").value;
-      if(bureau) query=query.ilike("bureau", `%${bureau}%`);
-      if(search) query=query.or(`nom.ilike.%${search}%,prenom.ilike.%${search}%,adresse.ilike.%${search}%`);
-      const { data, error } = await query;
-      if(error) { console.error(error); return; }
-      const tbody=document.querySelector("#electeursTable tbody");
-      tbody.innerHTML="";
-      data.forEach(e=>{
-        tbody.innerHTML+=`
-          <tr>
-            <td>${e.nom||""}</td>
-            <td>${e.prenom||""}</td>
-            <td>${e.bureau||""}</td>
-            <td>${e.adresse||""}</td>
-            <td>${e.email||""}</td>
-            <td>${e.telephone||""}</td>
-            <td>${e.remarque||""}</td>
-            <td>${e.statut||"-"}</td>
-          </tr>
+    // === Affichage du tableau ===
+    function renderVoters(voters) {
+      votersTable.innerHTML = "";
+      voters.forEach(v => {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>${v.nom || ""}</td>
+          <td>${v.prenom || ""}</td>
+          <td>${v.bureau || ""}</td>
+          <td>${v.adresse || ""}</td>
+          <td><input type="text" value="${v.email || ""}" onchange="updateField(${v.id}, 'email', this.value)"></td>
+          <td><input type="text" value="${v.telephone || ""}" onchange="updateField(${v.id}, 'telephone', this.value)"></td>
+          <td><input type="text" value="${v.remarque || ""}" onchange="updateField(${v.id}, 'remarque', this.value)"></td>
+          <td>${v.statut || "-"}</td>
+          <td>
+            <button onclick="updateField(${v.id}, 'statut', 'Favorable')" style="background:#4CAF50;color:white">Favorable</button>
+            <button onclick="updateField(${v.id}, 'statut', 'Défavorable')" style="background:#f44336;color:white">Défavorable</button>
+            <button onclick="updateField(${v.id}, 'statut', 'Indécis')" style="background:#ff9800;color:white">Indécis</button>
+            <button onclick="updateField(${v.id}, 'statut', 'Absent')" style="background:#607d8b;color:white">Absent</button>
+          </td>
         `;
+
+        votersTable.appendChild(tr);
       });
     }
 
-    // Export CSV
-    async function exportCSV() {
-      const { data } = await supabase.from("electeurs").select("*");
-      const csv = Papa.unparse(data);
-      downloadCSV(csv, "electeurs.csv");
-    }
+    // === Mise à jour dans Supabase ===
+    window.updateField = async function (id, field, value) {
+      const { error } = await supabase.from("voters").update({ [field]: value }).eq("id", id);
+      if (error) alert("Erreur update: " + error.message);
+      else loadVoters();
+    };
 
-    async function exportFilter(type) {
-      const { data } = await supabase.from("electeurs").select("*").in("statut", type==="Indécis" ? ["Favorable","Indécis"] : ["Favorable"]);
-      const csv = Papa.unparse(data);
-      downloadCSV(csv, `electeurs_${type}.csv`);
-    }
-
-    function downloadCSV(csv, filename) {
-      const blob=new Blob([csv], { type:"text/csv;charset=utf-8;" });
-      const link=document.createElement("a");
-      link.href=URL.createObjectURL(blob);
-      link.download=filename;
-      link.click();
-    }
+    // Vérification utilisateur au chargement
+    checkUser();
   </script>
+</head>
+<body>
+  <!-- === Auth === -->
+  <div id="auth">
+    <h2>Connexion bénévole</h2>
+    <input id="loginEmail" placeholder="Email">
+    <input id="loginPassword" type="password" placeholder="Mot de passe">
+    <button onclick="login()">Se connecter</button>
+
+    <h3>Créer un compte</h3>
+    <input id="signupEmail" placeholder="Email">
+    <input id="signupPassword" type="password" placeholder="Mot de passe">
+    <button onclick="signup()">Créer le compte</button>
+
+    <h3>Mot de passe oublié</h3>
+    <input id="resetEmail" placeholder="Email">
+    <button onclick="resetPassword()">Réinitialiser</button>
+  </div>
+
+  <!-- === App === -->
+  <div id="app" style="display:none">
+    <h2>📋 Porte-à-Porte</h2>
+    <p>Connecté : <span id="userEmail"></span> <button onclick="logout()">Se déconnecter</button></p>
+    <table border="1" width="100%">
+      <thead>
+        <tr>
+          <th>Nom</th><th>Prénom</th><th>Bureau</th><th>Adresse</th><th>Email</th><th>Téléphone</th><th>Remarque</th><th>Statut</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="votersTable"></tbody>
+    </table>
+  </div>
 </body>
 </html>
+
 

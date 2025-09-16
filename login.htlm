@@ -40,11 +40,11 @@
     const email = document.getElementById("loginEmail").value;
     const password = document.getElementById("loginPassword").value;
 
-    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) {
       alert("Erreur connexion : " + error.message);
     } else {
-      window.location.href = "index.html";
+      window.location.href = "index.html"; // redirection après login
     }
   }
 
@@ -53,11 +53,11 @@
     const email = document.getElementById("signupEmail").value;
     const password = document.getElementById("signupPassword").value;
 
-    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+    const { error } = await supabaseClient.auth.signUp({ email, password });
     if (error) {
       alert("Erreur inscription : " + error.message);
     } else {
-      alert("Compte créé, confirmez via votre email avant de vous connecter.");
+      alert("✅ Compte créé, confirmez via votre email avant de vous connecter.");
     }
   }
 
@@ -72,10 +72,11 @@
     if (error) {
       alert("Erreur reset : " + error.message);
     } else {
-      alert("Un email de réinitialisation a été envoyé.");
+      alert("📩 Un email de réinitialisation a été envoyé.");
     }
   }
 </script>
 
 </body>
 </html>
+

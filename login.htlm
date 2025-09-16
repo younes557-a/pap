@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Connexion - Porte-à-Porte</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+  <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
+    <h1 class="text-2xl font-bold mb-4 text-center">📋 Porte-à-Porte</h1>
+
+    <!-- Connexion -->
+    <h2 class="text-lg font-semibold mb-2">Connexion</h2>
+    <input id="loginEmail" type="email" placeholder="Email" class="border p-2 w-full mb-2 rounded">
+    <input id="loginPassword" type="password" placeholder="Mot de passe" class="border p-2 w-full mb-2 rounded">
+    <button onclick="login()" class="bg-blue-500 text-white px-4 py-2 w-full rounded">Se connecter</button>
+
+    <!-- Créer compte -->
+    <h2 class="text-lg font-semibold mt-6 mb-2">Créer un compte</h2>
+    <input id="signupEmail" type="email" placeholder="Email" class="border p-2 w-full mb-2 rounded">
+    <input id="signupPassword" type="password" placeholder="Mot de passe" class="border p-2 w-full mb-2 rounded">
+    <button onclick="signup()" class="bg-green-500 text-white px-4 py-2 w-full rounded">Créer le compte</button>
+
+    <!-- Reset -->
+    <h2 class="text-lg font-semibold mt-6 mb-2">Mot de passe oublié</h2>
+    <input id="resetEmail" type="email" placeholder="Votre email" class="border p-2 w-full mb-2 rounded">
+    <button onclick="resetPassword()" class="bg-gray-500 text-white px-4 py-2 w-full rounded">Réinitialiser</button>
+  </div>
+
+<script>
+  // ⚡ Config Supabase
+  const SUPABASE_URL = "https://trnquwaidbxjzfrisdnu.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM";
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Connexion
+  async function login() {
+    const email = document.getElementById("loginEmail").value;
+    const password = document.getElementById("loginPassword").value;
+
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) {
+      alert("Erreur connexion : " + error.message);
+    } else {
+      window.location.href = "index.html";
+    }
+  }
+
+  // Inscription
+  async function signup() {
+    const email = document.getElementById("signupEmail").value;
+    const password = document.getElementById("signupPassword").value;
+
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+    if (error) {
+      alert("Erreur inscription : " + error.message);
+    } else {
+      alert("Compte créé, confirmez via votre email avant de vous connecter.");
+    }
+  }
+
+  // Réinitialisation du mot de passe
+  async function resetPassword() {
+    const email = document.getElementById("resetEmail").value;
+
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+      redirectTo: "https://younes557-a.github.io/pap/"
+    });
+
+    if (error) {
+      alert("Erreur reset : " + error.message);
+    } else {
+      alert("Un email de réinitialisation a été envoyé.");
+    }
+  }
+</script>
+
+</body>
+</html>

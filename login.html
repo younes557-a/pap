@@ -40,11 +40,12 @@
     const email = document.getElementById("loginEmail").value;
     const password = document.getElementById("loginPassword").value;
 
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) {
       alert("Erreur connexion : " + error.message);
     } else {
-      window.location.href = "index.html"; // redirection après login
+      // ✅ Redirection GitHub Pages
+      window.location.href = "https://younes557-a.github.io/pap/index.html";
     }
   }
 
@@ -57,7 +58,7 @@
     if (error) {
       alert("Erreur inscription : " + error.message);
     } else {
-      alert("✅ Compte créé, confirmez via votre email avant de vous connecter.");
+      alert("Compte créé, confirmez via votre email avant de vous connecter.");
     }
   }
 
@@ -66,17 +67,16 @@
     const email = document.getElementById("resetEmail").value;
 
     const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-      redirectTo: "https://younes557-a.github.io/pap/"
+      redirectTo: "https://younes557-a.github.io/pap/login.html"
     });
 
     if (error) {
       alert("Erreur reset : " + error.message);
     } else {
-      alert("📩 Un email de réinitialisation a été envoyé.");
+      alert("Un email de réinitialisation a été envoyé.");
     }
   }
 </script>
 
 </body>
 </html>
-

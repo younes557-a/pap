@@ -4,42 +4,43 @@
   <meta charset="UTF-8">
   <title>Porte-à-Porte</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
 <body class="bg-gray-100">
 
-  <div class="flex justify-between items-center bg-white shadow p-4">
-    <h1 class="text-2xl font-bold">📋 Porte-à-Porte</h1>
+  <div class="p-4 bg-white shadow-md flex justify-between items-center">
+    <h1 class="text-xl font-bold">📋 Porte-à-Porte</h1>
     <div>
       Connecté : <span id="userEmail"></span>
-      <button onclick="logout()" class="ml-4 bg-red-500 text-white px-4 py-2 rounded">Se déconnecter</button>
+      <button onclick="logout()" class="bg-red-500 text-white px-3 py-1 rounded ml-2">Se déconnecter</button>
     </div>
   </div>
 
   <div class="p-4">
-    <div class="mb-4 flex space-x-2">
-      <input type="file" id="csvFile" accept=".csv" class="border p-2">
-      <button onclick="importCSV()" class="bg-blue-500 text-white px-4 py-2 rounded">Importer un CSV</button>
-      <button onclick="exportCSV()" class="bg-gray-500 text-white px-4 py-2 rounded">Exporter le CSV</button>
-      <button onclick="exportFiltered('Favorable')" class="bg-green-500 text-white px-4 py-2 rounded">Exporter Favorables</button>
-      <button onclick="exportFiltered('Indécis')" class="bg-orange-500 text-white px-4 py-2 rounded">Exporter Favorables + Indécis</button>
+    <div class="flex space-x-2 mb-4">
+      <input type="file" id="csvFile" class="border p-2 rounded">
+      <button onclick="importCSV()" class="bg-blue-500 text-white px-3 py-1 rounded">Importer un CSV</button>
+      <button onclick="exportCSV()" class="bg-gray-500 text-white px-3 py-1 rounded">Exporter le CSV</button>
+      <button onclick="exportFavorables()" class="bg-green-500 text-white px-3 py-1 rounded">Exporter Favorables</button>
+      <button onclick="exportFavorablesIndecis()" class="bg-orange-500 text-white px-3 py-1 rounded">Exporter Favorables + Indécis</button>
     </div>
 
-    <input id="searchInput" type="text" placeholder="Nom, rue, adresse..." class="border p-2 w-full mb-4 rounded">
+    <input id="search" type="text" placeholder="Nom, rue, adresse..." 
+           class="border p-2 w-full mb-4 rounded">
 
-    <table class="min-w-full bg-white border border-gray-300" id="dataTable">
+    <table class="table-auto w-full bg-white shadow-md">
       <thead>
         <tr class="bg-gray-200">
-          <th class="py-2 px-4 border">Nom</th>
-          <th class="py-2 px-4 border">Prénom</th>
-          <th class="py-2 px-4 border">Bureau</th>
-          <th class="py-2 px-4 border">Adresse</th>
-          <th class="py-2 px-4 border">Email</th>
-          <th class="py-2 px-4 border">Téléphone</th>
-          <th class="py-2 px-4 border">Remarque</th>
-          <th class="py-2 px-4 border">Statut</th>
-          <th class="py-2 px-4 border">Actions</th>
+          <th class="px-2 py-1">Nom</th>
+          <th class="px-2 py-1">Prénom</th>
+          <th class="px-2 py-1">Bureau</th>
+          <th class="px-2 py-1">Adresse</th>
+          <th class="px-2 py-1">Email</th>
+          <th class="px-2 py-1">Téléphone</th>
+          <th class="px-2 py-1">Remarque</th>
+          <th class="px-2 py-1">Statut</th>
+          <th class="px-2 py-1">Actions</th>
         </tr>
       </thead>
       <tbody id="tableBody"></tbody>
@@ -47,66 +48,93 @@
   </div>
 
 <script>
-  // ⚡ Configuration Supabase
+  // ⚡ Config Supabase
   const SUPABASE_URL = "https://trnquwaidbxjzfrisdnu.supabase.co";
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM";
+  const SUPABASE_KEY = "TON_ANON_KEY_ICI";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // Charger l’utilisateur connecté
+  // Vérifie si utilisateur est connecté
   supabaseClient.auth.getUser().then(({ data }) => {
-    if (data?.user) {
+    if (!data.user) {
+      window.location.href = "login.html";
+    } else {
       document.getElementById("userEmail").innerText = data.user.email;
       loadData();
-    } else {
-      window.location.href = "login.html";
     }
   });
 
-  // Déconnexion
   async function logout() {
     await supabaseClient.auth.signOut();
     window.location.href = "login.html";
   }
 
-  // Charger les données depuis Supabase
+  // 📥 Import CSV → Supabase
+  async function importCSV() {
+    const file = document.getElementById("csvFile").files[0];
+    if (!file) return alert("Choisis un fichier CSV");
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async function(results) {
+        const rows = results.data.map(r => ({
+          nom: r["Nom"] || "",
+          prenom: r["Prénom"] || "",
+          bureau: r["Bureau de vote"] || "",
+          adresse: r["Adresse"] || "",
+          email: r["Email"] || "",
+          telephone: r["Téléphone"] || "",
+          remarque: r["Remarque"] || "",
+          statut: r["Statut"] || "-"
+        }));
+
+        const { error } = await supabaseClient.from("electeurs").upsert(rows);
+        if (error) {
+          alert("Erreur import : " + error.message);
+        } else {
+          alert("✅ Import terminé !");
+          loadData();
+        }
+      }
+    });
+  }
+
+  // 📤 Charger les données depuis Supabase
   async function loadData() {
     const { data, error } = await supabaseClient.from("electeurs").select("*");
     if (error) {
       alert("Erreur chargement : " + error.message);
       return;
     }
-    renderTable(data);
-  }
 
-  // Afficher les données dans le tableau
-  function renderTable(data) {
-    const tbody = document.getElementById("tableBody");
-    tbody.innerHTML = "";
+    const tableBody = document.getElementById("tableBody");
+    tableBody.innerHTML = "";
+
     data.forEach(row => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td class="border px-4 py-2">${row.nom || ""}</td>
-        <td class="border px-4 py-2">${row.prenom || ""}</td>
-        <td class="border px-4 py-2">${row.bureau || ""}</td>
-        <td class="border px-4 py-2">${row.adresse || ""}</td>
-        <td class="border px-4 py-2"><input type="text" value="${row.email || ""}" onchange="updateField(${row.id}, 'email', this.value)"></td>
-        <td class="border px-4 py-2"><input type="text" value="${row.telephone || ""}" onchange="updateField(${row.id}, 'telephone', this.value)"></td>
-        <td class="border px-4 py-2"><input type="text" value="${row.remarque || ""}" onchange="updateField(${row.id}, 'remarque', this.value)"></td>
-        <td class="border px-4 py-2">${row.statut || "-"}</td>
-        <td class="border px-4 py-2">
+        <td class="border px-2 py-1">${row.nom}</td>
+        <td class="border px-2 py-1">${row.prenom}</td>
+        <td class="border px-2 py-1">${row.bureau}</td>
+        <td class="border px-2 py-1">${row.adresse}</td>
+        <td class="border px-2 py-1"><input value="${row.email || ""}" onchange="updateField(${row.id}, 'email', this.value)" class="border p-1 w-full"/></td>
+        <td class="border px-2 py-1"><input value="${row.telephone || ""}" onchange="updateField(${row.id}, 'telephone', this.value)" class="border p-1 w-full"/></td>
+        <td class="border px-2 py-1"><input value="${row.remarque || ""}" onchange="updateField(${row.id}, 'remarque', this.value)" class="border p-1 w-full"/></td>
+        <td class="border px-2 py-1">${row.statut}</td>
+        <td class="border px-2 py-1">
           <button onclick="updateField(${row.id}, 'statut', 'Favorable')" class="bg-green-500 text-white px-2 py-1 rounded">Favorable</button>
           <button onclick="updateField(${row.id}, 'statut', 'Défavorable')" class="bg-red-500 text-white px-2 py-1 rounded">Défavorable</button>
           <button onclick="updateField(${row.id}, 'statut', 'Indécis')" class="bg-yellow-500 text-white px-2 py-1 rounded">Indécis</button>
           <button onclick="updateField(${row.id}, 'statut', 'Absent')" class="bg-gray-500 text-white px-2 py-1 rounded">Absent</button>
         </td>
       `;
-      tbody.appendChild(tr);
+      tableBody.appendChild(tr);
     });
   }
 
-  // Mise à jour d’un champ
-  async function updateField(id, column, value) {
-    const { error } = await supabaseClient.from("electeurs").update({ [column]: value }).eq("id", id);
+  // 🔄 Mise à jour Supabase quand on modifie un champ
+  async function updateField(id, field, value) {
+    const { error } = await supabaseClient.from("electeurs").update({ [field]: value }).eq("id", id);
     if (error) {
       alert("Erreur mise à jour : " + error.message);
     } else {
@@ -114,69 +142,36 @@
     }
   }
 
-  // Importer CSV et envoyer vers Supabase
-  function importCSV() {
-    const file = document.getElementById("csvFile").files[0];
-    if (!file) return alert("Sélectionnez un fichier CSV.");
-
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async function(results) {
-        const dataToInsert = results.data.map(row => ({
-          nom: row.Nom || row.nom || "",
-          prenom: row.Prénom || row.prenom || "",
-          bureau: row.Bureau || row.bureau || "",
-          adresse: row.Adresse || row.adresse || "",
-          email: row.Email || row.email || "",
-          telephone: row.Téléphone || row.telephone || "",
-          remarque: row.Remarque || row.remarque || "",
-          statut: row.Statut || row.statut || ""
-        }));
-
-        const { error } = await supabaseClient.from("electeurs").insert(dataToInsert);
-        if (error) {
-          alert("Erreur import : " + error.message);
-        } else {
-          alert("✅ Import réussi !");
-          loadData();
-        }
-      }
-    });
-  }
-
-  // Export CSV
+  // 📤 Export complet
   async function exportCSV() {
-    const { data, error } = await supabaseClient.from("electeurs").select("*");
-    if (error) {
-      alert("Erreur export : " + error.message);
-      return;
-    }
+    const { data } = await supabaseClient.from("electeurs").select("*");
     const csv = Papa.unparse(data);
-    downloadCSV(csv, "export.csv");
+    downloadFile(csv, "export_complet.csv");
   }
 
-  // Export filtré
-  async function exportFiltered(filter) {
-    const { data, error } = await supabaseClient.from("electeurs").select("*").in("statut", [filter, "Indécis"]);
-    if (error) {
-      alert("Erreur export : " + error.message);
-      return;
-    }
+  // 📤 Export Favorables
+  async function exportFavorables() {
+    const { data } = await supabaseClient.from("electeurs").select("*").eq("statut", "Favorable");
     const csv = Papa.unparse(data);
-    downloadCSV(csv, "export_" + filter + ".csv");
+    downloadFile(csv, "export_favorables.csv");
   }
 
-  // Télécharger CSV
-  function downloadCSV(csv, filename) {
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  // 📤 Export Favorables + Indécis
+  async function exportFavorablesIndecis() {
+    const { data } = await supabaseClient.from("electeurs").select("*").in("statut", ["Favorable", "Indécis"]);
+    const csv = Papa.unparse(data);
+    downloadFile(csv, "export_favorables_indecis.csv");
+  }
+
+  // 📥 Fonction téléchargement
+  function downloadFile(content, filename) {
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = filename;
     link.click();
   }
 </script>
-
 </body>
 </html>
 

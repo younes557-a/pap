@@ -1,194 +1,154 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Porte-à-Porte</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-light">
 
-  <!-- Auth container -->
-  <div id="auth-container" class="max-w-md mx-auto mt-10 p-6 bg-white rounded-xl shadow-md">
-    <h1 class="text-2xl font-bold mb-4">📋 Porte-à-Porte</h1>
-
-    <h2 class="text-lg font-semibold mb-2">Connexion bénévole</h2>
-    <input id="loginEmail" type="email" placeholder="Votre email" class="border p-2 w-full mb-2">
-    <input id="loginPassword" type="password" placeholder="Mot de passe" class="border p-2 w-full mb-2">
-    <button onclick="login()" class="bg-blue-500 text-white px-4 py-2 rounded w-full">Se connecter</button>
-
-    <h2 class="text-lg font-semibold mt-4 mb-2">Créer un compte</h2>
-    <input id="signupEmail" type="email" placeholder="Votre email" class="border p-2 w-full mb-2">
-    <input id="signupPassword" type="password" placeholder="Mot de passe" class="border p-2 w-full mb-2">
-    <button onclick="signup()" class="bg-green-500 text-white px-4 py-2 rounded w-full">Créer le compte</button>
-
-    <h2 class="text-lg font-semibold mt-4 mb-2">Mot de passe oublié</h2>
-    <input id="resetEmail" type="email" placeholder="Votre email" class="border p-2 w-full mb-2">
-    <button onclick="resetPassword()" class="bg-yellow-500 text-white px-4 py-2 rounded w-full">Réinitialiser</button>
-  </div>
-
-  <!-- Reset container -->
-  <div id="recovery-container" class="hidden max-w-md mx-auto mt-10 p-6 bg-white rounded-xl shadow-md">
-    <h2 class="text-lg font-semibold mb-2">🔑 Réinitialiser le mot de passe</h2>
-    <input id="newPassword" type="password" placeholder="Nouveau mot de passe" class="border p-2 w-full mb-2">
-    <input id="confirmPassword" type="password" placeholder="Confirmer le mot de passe" class="border p-2 w-full mb-2">
-    <button onclick="confirmRecovery()" class="bg-blue-600 text-white px-4 py-2 rounded w-full">Valider</button>
-    <button onclick="logout()" class="bg-gray-400 text-white px-4 py-2 rounded w-full mt-2">Retour</button>
-  </div>
-
-  <!-- App container -->
-  <div id="app-container" class="hidden p-6">
-    <div class="flex justify-between items-center mb-4">
-      <h1 class="text-2xl font-bold">📋 Porte-à-Porte</h1>
-      <div>
-        <span id="user-info" class="font-semibold mr-4"></span>
-        <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded">Se déconnecter</button>
+  <!-- Barre de navigation -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">📋 Porte-à-Porte</a>
+      <div class="d-flex">
+        <span id="userEmail" class="text-white me-3"></span>
+        <button id="logoutBtn" class="btn btn-danger btn-sm">Se déconnecter</button>
       </div>
     </div>
+  </nav>
 
-    <!-- Import CSV -->
-    <input type="file" id="csvFile" accept=".csv" class="mb-4">
+  <div class="container mt-4">
+    <!-- Upload CSV (réservé admin ou 1ere fois) -->
+    <div id="uploadSection" class="mb-3">
+      <label for="csvFile" class="form-label">Importer le fichier électeurs (CSV)</label>
+      <input type="file" id="csvFile" class="form-control" accept=".csv" />
+      <button id="uploadBtn" class="btn btn-primary mt-2">Charger dans la base</button>
+    </div>
 
     <!-- Tableau électeurs -->
-    <div class="overflow-x-auto">
-      <table id="electeursTable" class="min-w-full bg-white border border-gray-300 text-sm">
-        <thead class="bg-gray-200">
-          <tr>
-            <th class="px-2 py-1 border">Nom</th>
-            <th class="px-2 py-1 border">Prénom</th>
-            <th class="px-2 py-1 border">Bureau</th>
-            <th class="px-2 py-1 border">Adresse</th>
-            <th class="px-2 py-1 border">Email</th>
-            <th class="px-2 py-1 border">Téléphone</th>
-            <th class="px-2 py-1 border">Remarque</th>
-            <th class="px-2 py-1 border">Statut</th>
-            <th class="px-2 py-1 border">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="electeursBody"></tbody>
-      </table>
-    </div>
+    <table id="electeursTable" class="table table-striped table-bordered">
+      <thead class="table-dark">
+        <tr>
+          <th>Nom</th>
+          <th>Prénom(s)</th>
+          <th>Date de naissance</th>
+          <th>Adresse</th>
+          <th>Bureau de vote</th>
+          <th>Email</th>
+          <th>Téléphone</th>
+          <th>Remarque</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
 
-<script>
-  const supabase = window.supabase.createClient(
-    "https://trnquwaidbxjzfrisdnu.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM"
-  );
+  <script>
+    // 🔑 Configuration Supabase
+    const SUPABASE_URL = "https://trnquwaidbxjzfrisdnu.supabase.co"; // ← remplace si besoin
+    const SUPABASE_KEY = "TON_ANON_KEY"; // ⚠️ mets ici ton anon public key
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // --- AUTH ---
-  async function login() {
-    const email = document.getElementById("loginEmail").value;
-    const password = document.getElementById("loginPassword").value;
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) alert("Erreur : " + error.message);
-  }
+    // Elements DOM
+    const logoutBtn = document.getElementById("logoutBtn");
+    const userEmailSpan = document.getElementById("userEmail");
+    const uploadBtn = document.getElementById("uploadBtn");
+    const csvFileInput = document.getElementById("csvFile");
+    const tbody = document.querySelector("#electeursTable tbody");
 
-  async function signup() {
-    const email = document.getElementById("signupEmail").value;
-    const password = document.getElementById("signupPassword").value;
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) alert("Erreur : " + error.message);
-    else alert("Vérifiez vos emails pour confirmer votre compte.");
-  }
-
-  async function resetPassword() {
-    const email = document.getElementById("resetEmail").value;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "https://younes557-a.github.io/pap/"
-    });
-    if (error) alert("Erreur : " + error.message);
-    else alert("Email envoyé !");
-  }
-
-  async function confirmRecovery() {
-    const newPass = document.getElementById("newPassword").value;
-    const confirmPass = document.getElementById("confirmPassword").value;
-    if (newPass !== confirmPass) {
-      alert("Les mots de passe ne correspondent pas.");
-      return;
+    // 🔹 Charger données depuis Supabase
+    async function loadData() {
+      const { data, error } = await supabase.from("electeurs").select("*");
+      if (error) {
+        console.error("Erreur lecture :", error);
+        return;
+      }
+      renderTable(data);
     }
-    const { error } = await supabase.auth.updateUser({ password: newPass });
-    if (error) alert("Erreur : " + error.message);
-    else {
-      alert("Mot de passe changé !");
-      window.location.hash = "";
-      checkUser();
-    }
-  }
 
-  async function logout() {
-    await supabase.auth.signOut();
-    checkUser();
-  }
-
-  async function checkUser() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      document.getElementById("auth-container").style.display = "none";
-      document.getElementById("recovery-container").style.display = "none";
-      document.getElementById("app-container").style.display = "block";
-      document.getElementById("user-info").innerText = "Connecté : " + user.email;
-    } else {
-      document.getElementById("auth-container").style.display = "block";
-      document.getElementById("app-container").style.display = "none";
-      document.getElementById("recovery-container").style.display = "none";
-    }
-  }
-
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (event === "PASSWORD_RECOVERY") {
-      document.getElementById("auth-container").style.display = "none";
-      document.getElementById("app-container").style.display = "none";
-      document.getElementById("recovery-container").style.display = "block";
-    }
-    checkUser();
-  });
-  checkUser();
-
-  // --- CSV IMPORT ---
-  document.getElementById("csvFile").addEventListener("change", function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const rows = e.target.result.split("\n").map(r => r.split(","));
-      const tbody = document.getElementById("electeursBody");
+    // 🔹 Rendu du tableau
+    function renderTable(data) {
       tbody.innerHTML = "";
-      rows.slice(1).forEach((row, i) => {
-        if (row.length < 4) return;
+      data.forEach(row => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td class="border px-2">${row[0]}</td>
-          <td class="border px-2">${row[1]}</td>
-          <td class="border px-2">${row[2]}</td>
-          <td class="border px-2">${row[3]}</td>
-          <td class="border px-2"><input type="email" class="w-full border"></td>
-          <td class="border px-2"><input type="tel" class="w-full border"></td>
-          <td class="border px-2"><input type="text" class="w-full border"></td>
-          <td class="border px-2" id="status-${i}">-</td>
-          <td class="border px-2">
-            <button onclick="setStatus(${i}, 'Favorable')" class="bg-green-500 text-white px-2 py-1 rounded">Favorable</button>
-            <button onclick="setStatus(${i}, 'Défavorable')" class="bg-red-500 text-white px-2 py-1 rounded">Défavorable</button>
-            <button onclick="setStatus(${i}, 'Indécis')" class="bg-yellow-500 text-white px-2 py-1 rounded">Indécis</button>
-            <button onclick="setStatus(${i}, 'Absent')" class="bg-gray-500 text-white px-2 py-1 rounded">Absent</button>
+          <td>${row.nom}</td>
+          <td>${row.prenoms}</td>
+          <td>${row.naissance || ""}</td>
+          <td>${row.adresse || ""}</td>
+          <td>${row.bureau || ""}</td>
+          <td contenteditable="true">${row.email || ""}</td>
+          <td contenteditable="true">${row.telephone || ""}</td>
+          <td contenteditable="true">${row.remarque || ""}</td>
+          <td>${row.statut || "-"}</td>
+          <td>
+            <button class="btn btn-success btn-sm">Favorable</button>
+            <button class="btn btn-danger btn-sm">Défavorable</button>
+            <button class="btn btn-warning btn-sm">Indécis</button>
+            <button class="btn btn-secondary btn-sm">Absent</button>
           </td>
         `;
         tbody.appendChild(tr);
       });
-    };
-    reader.readAsText(file, "UTF-8");
-  });
+    }
 
-  function setStatus(id, status) {
-    const td = document.getElementById("status-" + id);
-    td.textContent = status;
-    const tr = td.parentElement;
-    tr.classList.remove("bg-green-100", "bg-red-100");
-    if (status === "Favorable") tr.classList.add("bg-green-100");
-    if (status === "Défavorable") tr.classList.add("bg-red-100");
-  }
-</script>
+    // 🔹 Importer CSV et stocker en base
+    uploadBtn.addEventListener("click", () => {
+      const file = csvFileInput.files[0];
+      if (!file) {
+        alert("Choisis un fichier CSV !");
+        return;
+      }
+      Papa.parse(file, {
+        header: true,
+        complete: async (results) => {
+          const formatted = results.data.map(row => ({
+            nom: (row["nom de naissance"] || "") + " " + (row["nom d’usage"] || ""),
+            prenoms: row["prénoms"] || "",
+            naissance: row["date de naissance"] || "",
+            adresse: (row["numéro de voie"] || "") + " " + (row["libellé de voie"] || ""),
+            bureau: row["libellé du bureau de vote"] || "",
+            email: "",
+            telephone: "",
+            remarque: "",
+            statut: "-"
+          }));
+          const { error } = await supabase.from("electeurs").insert(formatted);
+          if (error) {
+            console.error("Erreur insertion :", error);
+            alert("Erreur importation");
+          } else {
+            alert("Import réussi !");
+            loadData();
+          }
+        }
+      });
+    });
+
+    // 🔹 Gestion session
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.href = "index.html"; // retour login si pas connecté
+      } else {
+        userEmailSpan.textContent = "Connecté : " + session.user.email;
+        loadData();
+      }
+    }
+
+    logoutBtn.addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      window.location.href = "index.html";
+    });
+
+    checkSession();
+  </script>
 </body>
 </html>
+

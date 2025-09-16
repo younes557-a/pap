@@ -17,17 +17,35 @@
     .indecis { background:#fef9c3; }
     .absent { background:#e0e7ff; }
     .pagination { margin-top: 1rem; }
-    input, select { padding:4px; margin:2px; }
+    input, select, textarea { padding:4px; margin:2px; }
+    textarea { width: 120px; height: 40px; }
+    #auth-container div { margin-bottom:1rem; }
   </style>
 </head>
 <body>
   <h1>🗳️ Porte-à-Porte</h1>
 
-  <!-- Zone login -->
+  <!-- Zone login/signup -->
   <div id="auth-container">
     <h2>Connexion bénévole</h2>
-    <input id="emailInput" type="email" placeholder="Votre email" />
-    <button onclick="login()">Recevoir un lien de connexion</button>
+    <div id="login-form">
+      <input id="loginEmail" type="email" placeholder="Votre email" />
+      <input id="loginPassword" type="password" placeholder="Mot de passe" />
+      <button onclick="login()">Se connecter</button>
+    </div>
+
+    <div id="signup-form">
+      <h3>Créer un compte</h3>
+      <input id="signupEmail" type="email" placeholder="Votre email" />
+      <input id="signupPassword" type="password" placeholder="Mot de passe" />
+      <button onclick="signup()">Créer le compte</button>
+    </div>
+
+    <div id="reset-form">
+      <h3>Mot de passe oublié</h3>
+      <input id="resetEmail" type="email" placeholder="Votre email" />
+      <button onclick="resetPassword()">Réinitialiser</button>
+    </div>
   </div>
 
   <!-- Zone app -->
@@ -47,6 +65,7 @@
         <option selected>100</option>
         <option>500</option>
       </select>
+      <button onclick="logout()">Se déconnecter</button>
     </div>
 
     <table>
@@ -68,36 +87,59 @@
   </div>
 
 <script>
-  // --- Supabase client ---
+  // --- Connexion Supabase ---
   const supabase = window.supabase.createClient(
     "https://trnquwaidbxjzfrisdnu.supabase.co",
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM"
   );
 
   // --- Auth ---
+  async function signup() {
+    const email = document.getElementById("signupEmail").value;
+    const password = document.getElementById("signupPassword").value;
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) alert("Erreur création compte : " + error.message);
+    else alert("Compte créé ! Vérifiez vos emails pour confirmer.");
+  }
+
   async function login() {
-    const email = document.getElementById('emailInput').value;
-    if (!email) return alert("Entrez un email !");
-    const { error } = await supabase.auth.signInWithOtp({ email });
+    const email = document.getElementById("loginEmail").value;
+    const password = document.getElementById("loginPassword").value;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) alert("Erreur connexion : " + error.message);
+    else checkUser();
+  }
+
+  async function resetPassword() {
+    const email = document.getElementById("resetEmail").value;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: "https://ephemeral-bombolone-223fb9.netlify.app" // ton site Netlify
+    });
     if (error) alert("Erreur : " + error.message);
-    else alert("Lien envoyé à " + email);
+    else alert("Un email de réinitialisation a été envoyé.");
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
+    checkUser();
   }
 
   async function checkUser() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      document.getElementById('auth-container').style.display = 'none';
-      document.getElementById('app-container').style.display = 'block';
+      document.getElementById("auth-container").style.display = "none";
+      document.getElementById("app-container").style.display = "block";
       reload();
     } else {
-      document.getElementById('auth-container').style.display = 'block';
-      document.getElementById('app-container').style.display = 'none';
+      document.getElementById("auth-container").style.display = "block";
+      document.getElementById("app-container").style.display = "none";
     }
   }
+
   supabase.auth.onAuthStateChange(() => checkUser());
   checkUser();
 
-  // --- State ---
+  // --- App ---
   let page = 1;
 
   async function reload() {
@@ -106,15 +148,13 @@
     const pageSize = parseInt(document.getElementById('pageSizeSelect').value);
 
     let query = supabase.from('voters').select('*', { count: 'exact' });
-
     if (search) {
       query = query.or(`nom.ilike.%${search}%,prenom.ilike.%${search}%,adresse.ilike.%${search}%`);
     }
-
     query = query.order(sort, { ascending: true });
     query = query.range((page-1)*pageSize, page*pageSize-1);
 
-    const { data, error, count } = await query;
+    const { data, error } = await query;
     if (error) { alert("Erreur chargement: " + error.message); return; }
 
     const tbody = document.getElementById('tbody');
@@ -155,3 +195,4 @@
 </script>
 </body>
 </html>
+

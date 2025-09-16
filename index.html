@@ -114,7 +114,6 @@
     if (error) {
       alert("Erreur connexion : " + error.message);
     } else if (data.session && data.session.user) {
-      // Connexion réussie → afficher direct l'app
       const user = data.session.user;
       console.log("Utilisateur connecté immédiatement:", user);
       document.getElementById("auth-container").style.display = "none";
@@ -156,8 +155,33 @@
     }
   }
 
+  // --- Gestion reset password via lien Supabase ---
+  async function handleRecovery() {
+    const hash = window.location.hash;
+    if (hash.includes("type=recovery")) {
+      const params = new URLSearchParams(hash.replace("#", ""));
+      const accessToken = params.get("access_token");
+
+      if (accessToken) {
+        console.log("Mode recovery détecté !");
+        const newPassword = prompt("Entrez votre nouveau mot de passe :");
+        if (newPassword) {
+          const { error } = await supabase.auth.updateUser({ password: newPassword });
+          if (error) {
+            alert("Erreur changement de mot de passe : " + error.message);
+          } else {
+            alert("Mot de passe changé avec succès ! Vous pouvez maintenant vous connecter.");
+            window.location.hash = ""; // Nettoyer l'URL
+            checkUser();
+          }
+        }
+      }
+    }
+  }
+
   supabase.auth.onAuthStateChange(() => checkUser());
   checkUser();
+  handleRecovery();
 
   // --- App ---
   let page = 1;
@@ -215,4 +239,5 @@
 </script>
 </body>
 </html>
+
 

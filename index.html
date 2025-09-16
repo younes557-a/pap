@@ -5,105 +5,144 @@
   <title>Porte-à-Porte</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 </head>
-<body class="bg-gray-100">
-  <div class="p-4 flex justify-between items-center bg-white shadow">
+<body class="bg-gray-100 min-h-screen">
+
+  <div class="p-4 bg-white shadow flex justify-between items-center">
     <h1 class="text-xl font-bold">📋 Porte-à-Porte</h1>
-    <div id="user-info"></div>
-    <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded">Se déconnecter</button>
+    <div>
+      Connecté : <span id="userEmail"></span>
+      <button onclick="logout()" class="ml-4 bg-red-500 text-white px-4 py-2 rounded">Se déconnecter</button>
+    </div>
   </div>
 
   <div class="p-4">
-    <input type="file" id="csvFile" accept=".csv" class="mb-2">
+    <input type="file" id="csvFile" class="mb-2">
     <button onclick="importCSV()" class="bg-blue-500 text-white px-4 py-2 rounded">Importer un CSV</button>
+  </div>
 
-    <table id="electeursTable" class="w-full mt-4 border">
-      <thead>
-        <tr class="bg-gray-200">
-          <th class="p-2 border">Nom</th>
-          <th class="p-2 border">Prénom</th>
-          <th class="p-2 border">Bureau</th>
-          <th class="p-2 border">Adresse</th>
-          <th class="p-2 border">Email</th>
-          <th class="p-2 border">Téléphone</th>
-          <th class="p-2 border">Remarque</th>
-          <th class="p-2 border">Statut</th>
-          <th class="p-2 border">Actions</th>
+  <div class="p-4">
+    <table class="table-auto w-full bg-white shadow rounded">
+      <thead class="bg-gray-200">
+        <tr>
+          <th class="px-2">Nom</th>
+          <th class="px-2">Prénom</th>
+          <th class="px-2">Bureau</th>
+          <th class="px-2">Adresse</th>
+          <th class="px-2">Email</th>
+          <th class="px-2">Téléphone</th>
+          <th class="px-2">Remarque</th>
+          <th class="px-2">Statut</th>
+          <th class="px-2">Actions</th>
         </tr>
       </thead>
-      <tbody id="electeursBody"></tbody>
+      <tbody id="electeursTable"></tbody>
     </table>
   </div>
 
 <script>
-  // ✅ Ton vrai Supabase
+  // ⚡ Config Supabase
   const SUPABASE_URL = "https://trnquwaidbxjzfrisdnu.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // Vérifier si utilisateur connecté
-  supabaseClient.auth.getUser().then(({ data }) => {
-    if (!data.user) {
+  // ✅ Vérifie l'utilisateur connecté
+  supabaseClient.auth.getUser().then(({ data, error }) => {
+    if (error || !data.user) {
       window.location.href = "login.html";
     } else {
-      document.getElementById("user-info").innerText = "Connecté : " + data.user.email;
+      document.getElementById("userEmail").innerText = data.user.email;
       loadElecteurs();
     }
   });
 
-  // Déconnexion
+  // 🚪 Déconnexion
   async function logout() {
     await supabaseClient.auth.signOut();
     window.location.href = "login.html";
   }
 
-  // Charger électeurs
+  // 📥 Charger données existantes
   async function loadElecteurs() {
     const { data, error } = await supabaseClient.from("electeurs").select("*");
     if (error) {
       alert("Erreur chargement : " + error.message);
-      return;
+    } else {
+      renderTable(data);
     }
-    const body = document.getElementById("electeursBody");
-    body.innerHTML = "";
-    data.forEach(row => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td class="border p-2">${row.nom}</td>
-        <td class="border p-2">${row.prenom}</td>
-        <td class="border p-2">${row.bureau}</td>
-        <td class="border p-2">${row.adresse}</td>
-        <td class="border p-2">${row.email ?? ""}</td>
-        <td class="border p-2">${row.telephone ?? ""}</td>
-        <td class="border p-2">${row.remarque ?? ""}</td>
-        <td class="border p-2">${row.statut ?? "-"}</td>
-        <td class="border p-2">
-          <button onclick="updateStatut(${row.id}, 'Favorable')" class="bg-green-500 text-white px-2 py-1 rounded">Favorable</button>
-          <button onclick="updateStatut(${row.id}, 'Défavorable')" class="bg-red-500 text-white px-2 py-1 rounded">Défavorable</button>
-          <button onclick="updateStatut(${row.id}, 'Indécis')" class="bg-yellow-500 text-white px-2 py-1 rounded">Indécis</button>
-          <button onclick="updateStatut(${row.id}, 'Absent')" class="bg-gray-500 text-white px-2 py-1 rounded">Absent</button>
-        </td>
-      `;
-      body.appendChild(tr);
+  }
+
+  // 📤 Affichage tableau
+  function renderTable(rows) {
+    const tbody = document.getElementById("electeursTable");
+    tbody.innerHTML = "";
+    rows.forEach(row => {
+      tbody.innerHTML += `
+        <tr class="border-b">
+          <td class="px-2">${row.nom || ""}</td>
+          <td class="px-2">${row.prenom || ""}</td>
+          <td class="px-2">${row.bureau || ""}</td>
+          <td class="px-2">${row.adresse || ""}</td>
+          <td class="px-2">${row.email || ""}</td>
+          <td class="px-2">${row.telephone || ""}</td>
+          <td class="px-2">${row.remarque || ""}</td>
+          <td class="px-2">${row.statut || "-"}</td>
+          <td class="px-2">
+            <button onclick="updateStatut(${row.id}, 'Favorable')" class="bg-green-500 text-white px-2 py-1 rounded">Favorable</button>
+            <button onclick="updateStatut(${row.id}, 'Défavorable')" class="bg-red-500 text-white px-2 py-1 rounded">Défavorable</button>
+            <button onclick="updateStatut(${row.id}, 'Indécis')" class="bg-yellow-500 text-white px-2 py-1 rounded">Indécis</button>
+            <button onclick="updateStatut(${row.id}, 'Absent')" class="bg-gray-500 text-white px-2 py-1 rounded">Absent</button>
+          </td>
+        </tr>`;
     });
   }
 
-  // Modifier statut
+  // ✅ Mettre à jour statut
   async function updateStatut(id, statut) {
     const { error } = await supabaseClient.from("electeurs").update({ statut }).eq("id", id);
     if (error) {
-      alert("Erreur maj : " + error.message);
+      alert("Erreur mise à jour : " + error.message);
     } else {
       loadElecteurs();
     }
   }
 
-  // Import CSV
+  // 📂 Import CSV → Supabase
   async function importCSV() {
     const file = document.getElementById("csvFile").files[0];
-    if (!file) return alert("Choisis un fichier CSV");
-    alert("⚡ Import CSV pas encore branché à Supabase.");
+    if (!file) {
+      alert("Sélectionne un fichier CSV d'abord !");
+      return;
+    }
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async function(results) {
+        const rows = results.data.map(r => ({
+          nom: r.Nom || r.nom || "",
+          prenom: r.Prénom || r.prenom || "",
+          bureau: r.Bureau || r.bureau || "",
+          adresse: r.Adresse || r.adresse || "",
+          email: r.Email || r.email || "",
+          telephone: r.Téléphone || r.telephone || "",
+          remarque: r.Remarque || r.remarque || "",
+          statut: "-"
+        }));
+
+        const { error } = await supabaseClient.from("electeurs").insert(rows);
+        if (error) {
+          alert("Erreur import : " + error.message);
+        } else {
+          alert("✅ Import réussi !");
+          loadElecteurs();
+        }
+      }
+    });
   }
 </script>
+
 </body>
 </html>
+

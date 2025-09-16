@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Porte-à-Porte</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/papaparse@5.3.2/papaparse.min.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-100">
@@ -17,10 +18,17 @@
     </div>
   </div>
 
+  <!-- Outils -->
+  <div class="p-4 space-x-2">
+    <input type="file" id="csvFile" class="border p-2">
+    <button onclick="importCSV()" class="bg-blue-500 text-white px-4 py-2 rounded">Importer CSV</button>
+    <button onclick="exportCSV()" class="bg-gray-600 text-white px-4 py-2 rounded">Exporter CSV</button>
+  </div>
+
   <!-- Tableau électeurs -->
-  <div class="p-4">
-    <table class="w-full border-collapse bg-white shadow rounded" id="tableElecteurs">
-      <thead class="bg-gray-200">
+  <div class="p-2 overflow-x-auto">
+    <table class="min-w-full border bg-white rounded shadow" id="tableElecteurs">
+      <thead class="bg-gray-200 text-sm">
         <tr>
           <th class="border p-2">Nom</th>
           <th class="border p-2">Prénom</th>
@@ -38,12 +46,12 @@
   </div>
 
 <script>
-  // ⚡ Supabase Config
+  // ⚡ Config Supabase
   const SUPABASE_URL = "https://trnquwaidbxjzfrisdnu.supabase.co";
-  const SUPABASE_KEY = "TON_ANON_KEY_ICI"; // ⚠️ Mets ton anon key
+  const SUPABASE_KEY = "TON_ANON_KEY_ICI"; // ⚠️ mets ton anon public key ici
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // Charger utilisateur
+  // Vérifier utilisateur
   supabaseClient.auth.getUser().then(({ data }) => {
     if (data.user) {
       document.getElementById("userEmail").innerText = data.user.email;
@@ -59,9 +67,9 @@
     window.location.href = "login.html";
   }
 
-  // Charger les électeurs depuis Supabase
+  // Charger les électeurs
   async function loadElecteurs() {
-    const { data, error } = await supabaseClient.from("electeurs").select("*");
+    const { data, error } = await supabaseClient.from("electeurs").select("*").order("id", { ascending: true });
     if (error) {
       alert("Erreur chargement : " + error.message);
       return;
@@ -69,49 +77,90 @@
     renderTable(data);
   }
 
-  // Rendu du tableau
+  // Afficher le tableau
   function renderTable(data) {
     const tbody = document.getElementById("tbodyElecteurs");
     tbody.innerHTML = "";
-
     data.forEach(e => {
       const row = document.createElement("tr");
-
+      row.className = "border-b text-sm";
       row.innerHTML = `
         <td class="border p-2">${e.nom || ""}</td>
         <td class="border p-2">${e.prenom || ""}</td>
         <td class="border p-2">${e.bureau || ""}</td>
         <td class="border p-2">${e.adresse || ""}</td>
-        <td class="border p-2">
-          <input type="text" value="${e.email || ""}" onchange="updateField(${e.id}, 'email', this.value)" class="border p-1 w-full">
-        </td>
-        <td class="border p-2">
-          <input type="text" value="${e.telephone || ""}" onchange="updateField(${e.id}, 'telephone', this.value)" class="border p-1 w-full">
-        </td>
-        <td class="border p-2">
-          <input type="text" value="${e.remarque || ""}" onchange="updateField(${e.id}, 'remarque', this.value)" class="border p-1 w-full">
-        </td>
+        <td class="border p-2"><input type="text" value="${e.email || ""}" onchange="updateField(${e.id}, 'email', this.value)" class="border p-1 w-full"></td>
+        <td class="border p-2"><input type="text" value="${e.telephone || ""}" onchange="updateField(${e.id}, 'telephone', this.value)" class="border p-1 w-full"></td>
+        <td class="border p-2"><input type="text" value="${e.remarque || ""}" onchange="updateField(${e.id}, 'remarque', this.value)" class="border p-1 w-full"></td>
         <td class="border p-2">${e.statut || "-"}</td>
-        <td class="border p-2">
-          <button onclick="updateField(${e.id}, 'statut', 'Favorable')" class="bg-green-500 text-white px-2 py-1 rounded">Favorable</button>
-          <button onclick="updateField(${e.id}, 'statut', 'Défavorable')" class="bg-red-500 text-white px-2 py-1 rounded">Défavorable</button>
-          <button onclick="updateField(${e.id}, 'statut', 'Indécis')" class="bg-yellow-500 text-white px-2 py-1 rounded">Indécis</button>
-          <button onclick="updateField(${e.id}, 'statut', 'Absent')" class="bg-gray-500 text-white px-2 py-1 rounded">Absent</button>
+        <td class="border p-2 space-y-1">
+          <button onclick="updateField(${e.id}, 'statut', 'Favorable')" class="bg-green-500 text-white px-2 py-1 rounded w-full">Favorable</button>
+          <button onclick="updateField(${e.id}, 'statut', 'Défavorable')" class="bg-red-500 text-white px-2 py-1 rounded w-full">Défavorable</button>
+          <button onclick="updateField(${e.id}, 'statut', 'Indécis')" class="bg-yellow-500 text-white px-2 py-1 rounded w-full">Indécis</button>
+          <button onclick="updateField(${e.id}, 'statut', 'Absent')" class="bg-gray-500 text-white px-2 py-1 rounded w-full">Absent</button>
         </td>
       `;
-
       tbody.appendChild(row);
     });
   }
 
-  // Mise à jour en base
+  // Mise à jour champ
   async function updateField(id, field, value) {
     const { error } = await supabaseClient.from("electeurs").update({ [field]: value }).eq("id", id);
-    if (error) {
-      alert("Erreur maj : " + error.message);
-    } else {
-      loadElecteurs();
-    }
+    if (error) alert("Erreur mise à jour : " + error.message);
+    else loadElecteurs();
+  }
+
+  // Import CSV compatible avec ton fichier
+  async function importCSV() {
+    const file = document.getElementById("csvFile").files[0];
+    if (!file) return alert("Choisissez un fichier CSV");
+
+    Papa.parse(file, {
+      header: true,
+      complete: async function(results) {
+        const converted = results.data.map(row => {
+          let statut = null;
+          if (row["Favorable"]) statut = "Favorable";
+          else if (row["Défavorable"]) statut = "Défavorable";
+          else if (row["Indécis"]) statut = "Indécis";
+          else if (row["Absent"]) statut = "Absent";
+
+          return {
+            nom: row["nom"] || row["Nom"] || "",
+            prenom: row["prenom"] || row["Prénom"] || "",
+            bureau: row["bureau"] || row["Bureau"] || "",
+            adresse: row["adresse"] || row["Adresse"] || "",
+            email: row["email"] || "",
+            telephone: row["telephone"] || "",
+            remarque: row["remarque"] || "",
+            statut: statut
+          };
+        });
+
+        const { error } = await supabaseClient.from("electeurs").insert(converted);
+        if (error) alert("Erreur import : " + error.message);
+        else loadElecteurs();
+      }
+    });
+  }
+
+  // Export CSV
+  async function exportCSV() {
+    const { data, error } = await supabaseClient.from("electeurs").select("*");
+    if (error) return alert("Erreur export : " + error.message);
+
+    let csvContent = "data:text/csv;charset=utf-8," + [
+      ["nom","prenom","bureau","adresse","email","telephone","remarque","statut"],
+      ...data.map(e => [e.nom, e.prenom, e.bureau, e.adresse, e.email, e.telephone, e.remarque, e.statut])
+    ].map(e => e.join(",")).join("\n");
+
+    const link = document.createElement("a");
+    link.href = encodeURI(csvContent);
+    link.download = "export.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 </script>
 

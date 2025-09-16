@@ -40,11 +40,10 @@
     const email = document.getElementById("loginEmail").value;
     const password = document.getElementById("loginPassword").value;
 
-    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) {
       alert("Erreur connexion : " + error.message);
     } else {
-      // ✅ Redirection GitHub Pages
       window.location.href = "https://younes557-a.github.io/pap/index.html";
     }
   }
@@ -58,7 +57,7 @@
     if (error) {
       alert("Erreur inscription : " + error.message);
     } else {
-      alert("Compte créé, confirmez via votre email avant de vous connecter.");
+      alert("✅ Compte créé. Vérifie ton email pour confirmer l’inscription.");
     }
   }
 
@@ -73,7 +72,7 @@
     if (error) {
       alert("Erreur reset : " + error.message);
     } else {
-      alert("Un email de réinitialisation a été envoyé.");
+      alert("📩 Un email de réinitialisation a été envoyé.");
     }
   }
 </script>

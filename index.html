@@ -44,13 +44,22 @@
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // Vérification session utilisateur
+  // ✅ Attendre que Supabase charge la session
   async function checkSession() {
     const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session) {
-      window.location.href = "https://younes557-a.github.io/pap/login.html";
-    } else {
+
+    if (session) {
       document.getElementById("userEmail").innerText = "Connecté : " + session.user.email;
+    } else {
+      // attendre un peu avant de forcer la redirection
+      setTimeout(async () => {
+        const { data: { session: retrySession } } = await supabaseClient.auth.getSession();
+        if (!retrySession) {
+          window.location.href = "https://younes557-a.github.io/pap/login.html";
+        } else {
+          document.getElementById("userEmail").innerText = "Connecté : " + retrySession.user.email;
+        }
+      }, 1500);
     }
   }
 
@@ -60,14 +69,13 @@
     window.location.href = "https://younes557-a.github.io/pap/login.html";
   }
 
-  // Exemple affichage (à relier à Supabase ou CSV)
   function importCSV() {
     alert("⚡ Import CSV pas encore branché à Supabase ici (simple placeholder).");
   }
 
-  // Lancement
   checkSession();
 </script>
 
 </body>
 </html>
+

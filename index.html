@@ -11,16 +11,17 @@
     table { border-collapse: collapse; width: 100%; background:white; }
     th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
     th { background:#f3f4f6; }
-    button { margin: 2px; padding:4px 8px; border-radius:4px; cursor:pointer; }
+    button { margin: 2px; padding:6px 12px; border-radius:4px; cursor:pointer; }
     .favorable { background:#d1fae5; }
     .defavorable { background:#fee2e2; }
     .indecis { background:#fef9c3; }
     .absent { background:#e0e7ff; }
     .pagination { margin-top: 1rem; }
-    input, select, textarea { padding:4px; margin:2px; }
+    input, select, textarea { padding:6px; margin:4px; }
     textarea { width: 120px; height: 40px; }
     #auth-container div { margin-bottom:1rem; }
     #user-info { margin-bottom:1rem; font-style: italic; }
+    #recovery-container { display:none; background:#fff; padding:1rem; border:1px solid #ddd; border-radius:6px; }
   </style>
 </head>
 <body>
@@ -47,6 +48,14 @@
       <input id="resetEmail" type="email" placeholder="Votre email" />
       <button onclick="resetPassword()">Réinitialiser</button>
     </div>
+  </div>
+
+  <!-- Zone reset password -->
+  <div id="recovery-container">
+    <h2>Réinitialiser votre mot de passe</h2>
+    <input id="newPassword" type="password" placeholder="Nouveau mot de passe" />
+    <input id="confirmPassword" type="password" placeholder="Confirmer le mot de passe" />
+    <button onclick="confirmRecovery()">Valider</button>
   </div>
 
   <!-- Zone app -->
@@ -94,6 +103,7 @@
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM"
   );
 
+  // --- Auth ---
   async function signup() {
     const email = document.getElementById("signupEmail").value;
     const password = document.getElementById("signupPassword").value;
@@ -133,6 +143,7 @@
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       document.getElementById("auth-container").style.display = "none";
+      document.getElementById("recovery-container").style.display = "none";
       document.getElementById("app-container").style.display = "block";
       document.getElementById("user-info").innerText = "Connecté : " + user.email;
       reload();
@@ -142,8 +153,35 @@
     }
   }
 
+  // --- Gestion reset password ---
+  async function handleRecovery() {
+    const hash = window.location.hash;
+    if (hash.includes("type=recovery")) {
+      document.getElementById("auth-container").style.display = "none";
+      document.getElementById("app-container").style.display = "none";
+      document.getElementById("recovery-container").style.display = "block";
+    }
+  }
+
+  async function confirmRecovery() {
+    const newPass = document.getElementById("newPassword").value;
+    const confirmPass = document.getElementById("confirmPassword").value;
+    if (newPass !== confirmPass) {
+      alert("Les mots de passe ne correspondent pas.");
+      return;
+    }
+    const { error } = await supabase.auth.updateUser({ password: newPass });
+    if (error) alert("Erreur : " + error.message);
+    else {
+      alert("Mot de passe modifié avec succès !");
+      window.location.hash = "";
+      checkUser();
+    }
+  }
+
   supabase.auth.onAuthStateChange(() => checkUser());
   checkUser();
+  handleRecovery();
 
   // --- App ---
   let page = 1;

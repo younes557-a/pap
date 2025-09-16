@@ -1,112 +1,157 @@
 <!DOCTYPE html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Porte-à-Porte – Ris-Orangis</title>
-    <link rel="stylesheet" href="styles.css" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  </head>
-  <body class="bg-gray-50 text-gray-900">
-    <header class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b">
-      <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-        <h1 class="text-xl font-semibold">🗳️ Porte-à-Porte</h1>
-        <div class="ml-auto flex items-center gap-2 flex-wrap">
-          <button id="btnExport" class="btn">Exporter le CSV (complet)</button>
-          <button id="btnExportView" class="btn-secondary">Exporter la vue</button>
-          <button id="btnExportFav" class="btn-green">Exporter Favorables</button>
-          <button id="btnExportFavInd" class="btn-amber">Exporter Favorables + Indécis</button>
-          <label class="btn cursor-pointer">
-            Importer un CSV
-            <input id="fileInput" type="file" accept=".csv,text/csv" class="hidden" />
-          </label>
-        </div>
-      </div>
-    </header>
+<head>
+  <meta charset="UTF-8">
+  <title>Porte-à-Porte</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: sans-serif; margin: 1rem; background:#f9fafb; }
+    h1 { margin-bottom: 1rem; }
+    table { border-collapse: collapse; width: 100%; background:white; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+    th { background:#f3f4f6; }
+    button { margin: 2px; padding:4px 8px; border-radius:4px; cursor:pointer; }
+    .favorable { background:#d1fae5; }
+    .defavorable { background:#fee2e2; }
+    .indecis { background:#fef9c3; }
+    .absent { background:#e0e7ff; }
+    .pagination { margin-top: 1rem; }
+    input, select { padding:4px; margin:2px; }
+  </style>
+</head>
+<body>
+  <h1>🗳️ Porte-à-Porte</h1>
 
-    <main class="max-w-7xl mx-auto px-4 py-4 space-y-4">
-      <section class="card">
-        <h2 class="card-title">Filtres & Outils</h2>
-        <div class="grid md:grid-cols-4 gap-3">
-          <div class="space-y-2">
-            <label class="text-xs text-gray-600">Bureau de vote</label>
-            <select id="bureauFilter" class="input">
-              <option value="">Tous les bureaux</option>
-            </select>
-          </div>
-          <div class="space-y-2 md:col-span-2">
-            <label class="text-xs text-gray-600">Recherche</label>
-            <div class="flex gap-2">
-              <input id="searchInput" class="input flex-1" placeholder="Nom, rue, adresse…" />
-              <button id="btnSearch" class="btn-secondary">Chercher</button>
-              <button id="btnClearFilters" class="btn-tertiary">Réinitialiser</button>
-            </div>
-          </div>
-          <div class="space-y-2">
-            <label class="text-xs text-gray-600">Tri</label>
-            <div class="grid grid-cols-2 gap-2">
-              <select id="sortColumn" class="input col-span-2">
-                <option value="composite" selected>Bureau &gt; Rue &gt; Nom</option>
-                <option value="bureau">Bureau (A→Z)</option>
-                <option value="rue">Rue (A→Z)</option>
-                <option value="nom">Nom (A→Z)</option>
-              </select>
-              <button id="sortToggle" class="btn-secondary">Asc</button>
-              <button id="btnApplySort" class="btn">Appliquer</button>
-            </div>
-          </div>
-        </div>
-        <div id="progress" class="mt-2 text-sm text-gray-700">Aucun fichier importé.</div>
-      </section>
+  <!-- Zone login -->
+  <div id="auth-container">
+    <h2>Connexion bénévole</h2>
+    <input id="emailInput" type="email" placeholder="Votre email" />
+    <button onclick="login()">Recevoir un lien de connexion</button>
+  </div>
 
-      <section class="card">
-        <div class="flex items-center justify-between mb-2">
-          <h2 class="card-title">Électeurs</h2>
-          <div class="flex items-center gap-2 text-sm">
-            <span>Par page :</span>
-            <select id="pageSize" class="input w-28">
-              <option value="500">500</option>
-              <option value="1000" selected>1000</option>
-              <option value="2000">2000</option>
-            </select>
-          </div>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="table" id="table">
-            <thead>
-              <tr>
-                <th>Nom</th>
-                <th>Prénom</th>
-                <th>Bureau de vote</th>
-                <th>Adresse</th>
-                <th>Email</th>
-                <th>Téléphone</th>
-                <th>Remarque</th>
-                <th>Statut</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="tbody"></tbody>
-          </table>
-        </div>
-        <div class="flex items-center justify-between mt-3 text-sm">
-          <div id="pageInfo" class="text-gray-600">Page 1 / 1</div>
-          <div class="flex items-center gap-2">
-            <button id="btnPrev" class="btn-secondary">Précédent</button>
-            <button id="btnNext" class="btn-secondary">Suivant</button>
-            <span>Aller à :</span>
-            <input id="gotoInput" class="input w-20" type="number" min="1" value="1"/>
-            <button id="btnGoto" class="btn-secondary">Aller</button>
-          </div>
-        </div>
-      </section>
-    </main>
+  <!-- Zone app -->
+  <div id="app-container" style="display:none;">
+    <div>
+      Recherche : <input id="searchInput" placeholder="Nom, prénom ou adresse" oninput="reload()" />
+      Trier par : 
+      <select id="sortSelect" onchange="reload()">
+        <option value="nom">Nom</option>
+        <option value="prenom">Prénom</option>
+        <option value="bureau">Bureau</option>
+        <option value="adresse">Adresse</option>
+      </select>
+      Par page :
+      <select id="pageSizeSelect" onchange="reload()">
+        <option>50</option>
+        <option selected>100</option>
+        <option>500</option>
+      </select>
+    </div>
 
-    <footer class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-gray-500">
-      Hors-ligne. Sauvegarde locale (navigateur).
-    </footer>
+    <table>
+      <thead>
+        <tr>
+          <th>Nom</th><th>Prénom</th><th>Bureau</th><th>Adresse</th>
+          <th>Email</th><th>Téléphone</th><th>Remarque</th>
+          <th>Statut</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
 
-    <script src="app.js"></script>
-  </body>
+    <div class="pagination">
+      <button onclick="prevPage()">Précédent</button>
+      Page <span id="pageNum">1</span>
+      <button onclick="nextPage()">Suivant</button>
+    </div>
+  </div>
+
+<script>
+  // --- Supabase client ---
+  const supabase = window.supabase.createClient(
+    "https://trnquwaidbxjzfrisdnu.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM"
+  );
+
+  // --- Auth ---
+  async function login() {
+    const email = document.getElementById('emailInput').value;
+    if (!email) return alert("Entrez un email !");
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    if (error) alert("Erreur : " + error.message);
+    else alert("Lien envoyé à " + email);
+  }
+
+  async function checkUser() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      document.getElementById('auth-container').style.display = 'none';
+      document.getElementById('app-container').style.display = 'block';
+      reload();
+    } else {
+      document.getElementById('auth-container').style.display = 'block';
+      document.getElementById('app-container').style.display = 'none';
+    }
+  }
+  supabase.auth.onAuthStateChange(() => checkUser());
+  checkUser();
+
+  // --- State ---
+  let page = 1;
+
+  async function reload() {
+    const search = document.getElementById('searchInput').value;
+    const sort = document.getElementById('sortSelect').value;
+    const pageSize = parseInt(document.getElementById('pageSizeSelect').value);
+
+    let query = supabase.from('voters').select('*', { count: 'exact' });
+
+    if (search) {
+      query = query.or(`nom.ilike.%${search}%,prenom.ilike.%${search}%,adresse.ilike.%${search}%`);
+    }
+
+    query = query.order(sort, { ascending: true });
+    query = query.range((page-1)*pageSize, page*pageSize-1);
+
+    const { data, error, count } = await query;
+    if (error) { alert("Erreur chargement: " + error.message); return; }
+
+    const tbody = document.getElementById('tbody');
+    tbody.innerHTML = "";
+    data.forEach(v => {
+      const tr = document.createElement("tr");
+      tr.className = v.status || "";
+      tr.innerHTML = `
+        <td>${v.nom||""}</td>
+        <td>${v.prenom||""}</td>
+        <td>${v.bureau||""}</td>
+        <td>${v.adresse||""}</td>
+        <td><input value="${v.email||""}" onchange="updateField('${v.id}','email',this.value)" /></td>
+        <td><input value="${v.telephone||""}" onchange="updateField('${v.id}','telephone',this.value)" /></td>
+        <td><textarea onchange="updateField('${v.id}','remarque',this.value)">${v.remarque||""}</textarea></td>
+        <td>${v.status||""}</td>
+        <td>
+          <button onclick="updateField('${v.id}','status','favorable')">Favorable</button>
+          <button onclick="updateField('${v.id}','status','defavorable')">Défavorable</button>
+          <button onclick="updateField('${v.id}','status','indecis')">Indécis</button>
+          <button onclick="updateField('${v.id}','status','absent')">Absent</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('pageNum').innerText = page;
+  }
+
+  async function updateField(id, field, value) {
+    const { error } = await supabase.from('voters').update({ [field]: value }).eq('id', id);
+    if (error) alert("Erreur mise à jour: " + error.message);
+    else reload();
+  }
+
+  function nextPage() { page++; reload(); }
+  function prevPage() { if (page>1) page--; reload(); }
+</script>
+</body>
 </html>

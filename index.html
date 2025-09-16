@@ -118,22 +118,28 @@
 
     Papa.parse(file, {
       header: true,
+      delimiter: ";", // ⚡ ton CSV est séparé par ;
       skipEmptyLines: true,
       complete: async function(results) {
+        console.log("Colonnes détectées :", Object.keys(results.data[0] || {}));
+
         const rows = results.data.map(r => ({
-          nom: r.Nom || r.nom || "",
-          prenom: r.Prénom || r.prenom || "",
-          bureau: r.Bureau || r.bureau || "",
-          adresse: r.Adresse || r.adresse || "",
-          email: r.Email || r.email || "",
-          telephone: r.Téléphone || r.telephone || "",
-          remarque: r.Remarque || r.remarque || "",
+          nom: r["Nom"] || r["NOM"] || r["nom"] || "",
+          prenom: r["Prénom"] || r["PRENOM"] || r["prenom"] || "",
+          bureau: r["Bureau"] || r["BUREAU"] || r["bureau"] || "",
+          adresse: r["Adresse"] || r["ADRESSE"] || r["adresse"] || "",
+          email: r["Email"] || r["EMAIL"] || "",
+          telephone: r["Téléphone"] || r["TELEPHONE"] || "",
+          remarque: r["Remarque"] || r["REMARQUE"] || "",
           statut: "-"
         }));
+
+        console.log("Données prêtes à insérer :", rows.slice(0, 5));
 
         const { error } = await supabaseClient.from("electeurs").insert(rows);
         if (error) {
           alert("Erreur import : " + error.message);
+          console.error(error);
         } else {
           alert("✅ Import réussi !");
           loadElecteurs();
@@ -145,4 +151,3 @@
 
 </body>
 </html>
-

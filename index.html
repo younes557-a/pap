@@ -89,46 +89,36 @@
   </div>
 
 <script>
-  // --- Connexion Supabase ---
   const supabase = window.supabase.createClient(
     "https://trnquwaidbxjzfrisdnu.supabase.co",
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM"
   );
 
-  // --- Auth ---
   async function signup() {
     const email = document.getElementById("signupEmail").value;
     const password = document.getElementById("signupPassword").value;
     const { error } = await supabase.auth.signUp({ email, password });
     if (error) alert("Erreur création compte : " + error.message);
-    else alert("Compte créé ! Vérifiez vos emails pour confirmer.");
+    else alert("Compte créé ! Vérifiez vos emails.");
   }
 
   async function login() {
     const email = document.getElementById("loginEmail").value;
     const password = document.getElementById("loginPassword").value;
-
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    console.log("Login data:", data, "Login error:", error); // DEBUG
-
-    if (error) {
-      alert("Erreur connexion : " + error.message);
-    } else if (data.session && data.session.user) {
-      const user = data.session.user;
-      console.log("Utilisateur connecté immédiatement:", user);
+    if (error) alert("Erreur connexion : " + error.message);
+    else {
       document.getElementById("auth-container").style.display = "none";
       document.getElementById("app-container").style.display = "block";
-      document.getElementById("user-info").innerText = "Connecté en tant que : " + user.email;
+      document.getElementById("user-info").innerText = "Connecté : " + data.user.email;
       reload();
-    } else {
-      checkUser(); // fallback
     }
   }
 
   async function resetPassword() {
     const email = document.getElementById("resetEmail").value;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "https://ephemeral-bombolone-223fb9.netlify.app"
+      redirectTo: "https://younes557-a.github.io/pap/"
     });
     if (error) alert("Erreur : " + error.message);
     else alert("Un email de réinitialisation a été envoyé.");
@@ -140,52 +130,23 @@
   }
 
   async function checkUser() {
-    const { data: { user }, error } = await supabase.auth.getUser();
-    console.log("CheckUser →", user, error); // DEBUG
-
+    const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       document.getElementById("auth-container").style.display = "none";
       document.getElementById("app-container").style.display = "block";
-      document.getElementById("user-info").innerText = "Connecté en tant que : " + user.email;
+      document.getElementById("user-info").innerText = "Connecté : " + user.email;
       reload();
     } else {
       document.getElementById("auth-container").style.display = "block";
       document.getElementById("app-container").style.display = "none";
-      document.getElementById("user-info").innerText = "";
-    }
-  }
-
-  // --- Gestion reset password via lien Supabase ---
-  async function handleRecovery() {
-    const hash = window.location.hash;
-    if (hash.includes("type=recovery")) {
-      const params = new URLSearchParams(hash.replace("#", ""));
-      const accessToken = params.get("access_token");
-
-      if (accessToken) {
-        console.log("Mode recovery détecté !");
-        const newPassword = prompt("Entrez votre nouveau mot de passe :");
-        if (newPassword) {
-          const { error } = await supabase.auth.updateUser({ password: newPassword });
-          if (error) {
-            alert("Erreur changement de mot de passe : " + error.message);
-          } else {
-            alert("Mot de passe changé avec succès ! Vous pouvez maintenant vous connecter.");
-            window.location.hash = ""; // Nettoyer l'URL
-            checkUser();
-          }
-        }
-      }
     }
   }
 
   supabase.auth.onAuthStateChange(() => checkUser());
   checkUser();
-  handleRecovery();
 
   // --- App ---
   let page = 1;
-
   async function reload() {
     const search = document.getElementById('searchInput').value;
     const sort = document.getElementById('sortSelect').value;
@@ -239,5 +200,4 @@
 </script>
 </body>
 </html>
-
 

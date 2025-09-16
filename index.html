@@ -107,9 +107,23 @@
   async function login() {
     const email = document.getElementById("loginEmail").value;
     const password = document.getElementById("loginPassword").value;
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) alert("Erreur connexion : " + error.message);
-    else checkUser();
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    console.log("Login data:", data, "Login error:", error); // DEBUG
+
+    if (error) {
+      alert("Erreur connexion : " + error.message);
+    } else if (data.session && data.session.user) {
+      // Connexion réussie → afficher direct l'app
+      const user = data.session.user;
+      console.log("Utilisateur connecté immédiatement:", user);
+      document.getElementById("auth-container").style.display = "none";
+      document.getElementById("app-container").style.display = "block";
+      document.getElementById("user-info").innerText = "Connecté en tant que : " + user.email;
+      reload();
+    } else {
+      checkUser(); // fallback
+    }
   }
 
   async function resetPassword() {
@@ -127,8 +141,8 @@
   }
 
   async function checkUser() {
-    const { data: { user } } = await supabase.auth.getUser();
-    console.log("Utilisateur connecté:", user); // DEBUG
+    const { data: { user }, error } = await supabase.auth.getUser();
+    console.log("CheckUser →", user, error); // DEBUG
 
     if (user) {
       document.getElementById("auth-container").style.display = "none";
@@ -201,3 +215,4 @@
 </script>
 </body>
 </html>
+

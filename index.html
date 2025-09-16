@@ -11,12 +11,11 @@
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM";
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // === DOM Elements ===
     const authDiv = document.getElementById("auth");
     const appDiv = document.getElementById("app");
     const votersTable = document.getElementById("votersTable");
 
-    // === Gestion de l'état utilisateur ===
+    // === Vérification utilisateur ===
     async function checkUser() {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
@@ -30,8 +29,8 @@
       }
     }
 
-    // === Authentification ===
-    async function login() {
+    // === Auth ===
+    window.login = async function () {
       const email = document.getElementById("loginEmail").value;
       const password = document.getElementById("loginPassword").value;
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -39,15 +38,15 @@
       checkUser();
     }
 
-    async function signup() {
+    window.signup = async function () {
       const email = document.getElementById("signupEmail").value;
       const password = document.getElementById("signupPassword").value;
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) alert("Erreur inscription: " + error.message);
-      else alert("Vérifiez vos mails pour confirmer l'inscription !");
+      else alert("Vérifiez vos mails pour confirmer !");
     }
 
-    async function resetPassword() {
+    window.resetPassword = async function () {
       const email = document.getElementById("resetEmail").value;
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: "https://younes557-a.github.io/pap/"
@@ -56,12 +55,12 @@
       else alert("Email de réinitialisation envoyé !");
     }
 
-    async function logout() {
+    window.logout = async function () {
       await supabase.auth.signOut();
       checkUser();
     }
 
-    // === Charger les électeurs depuis Supabase ===
+    // === Charger électeurs ===
     async function loadVoters() {
       const { data, error } = await supabase.from("voters").select("*");
       if (error) {
@@ -71,12 +70,10 @@
       renderVoters(data);
     }
 
-    // === Affichage du tableau ===
     function renderVoters(voters) {
       votersTable.innerHTML = "";
       voters.forEach(v => {
         const tr = document.createElement("tr");
-
         tr.innerHTML = `
           <td>${v.nom || ""}</td>
           <td>${v.prenom || ""}</td>
@@ -93,24 +90,22 @@
             <button onclick="updateField(${v.id}, 'statut', 'Absent')" style="background:#607d8b;color:white">Absent</button>
           </td>
         `;
-
         votersTable.appendChild(tr);
       });
     }
 
-    // === Mise à jour dans Supabase ===
+    // === Update ===
     window.updateField = async function (id, field, value) {
       const { error } = await supabase.from("voters").update({ [field]: value }).eq("id", id);
       if (error) alert("Erreur update: " + error.message);
       else loadVoters();
     };
 
-    // Vérification utilisateur au chargement
     checkUser();
   </script>
 </head>
 <body>
-  <!-- === Auth === -->
+  <!-- AUTH -->
   <div id="auth">
     <h2>Connexion bénévole</h2>
     <input id="loginEmail" placeholder="Email">
@@ -127,7 +122,7 @@
     <button onclick="resetPassword()">Réinitialiser</button>
   </div>
 
-  <!-- === App === -->
+  <!-- APP -->
   <div id="app" style="display:none">
     <h2>📋 Porte-à-Porte</h2>
     <p>Connecté : <span id="userEmail"></span> <button onclick="logout()">Se déconnecter</button></p>
@@ -142,5 +137,3 @@
   </div>
 </body>
 </html>
-
-

@@ -32,7 +32,7 @@
 <script>
   // ⚡ Config Supabase
   const SUPABASE_URL = "https://trnquwaidbxjzfrisdnu.supabase.co";
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRybnF1d2FpZGJ4anpmcmlzZG51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzMyMTIsImV4cCI6MjA3MzU0OTIxMn0.uvpkuzw0JzQPj53hNlU4d0Db-TIvnfdVzBtkvhsMZhM";
+  const SUPABASE_KEY = "TON_ANON_KEY_ICI";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   // Connexion
@@ -44,7 +44,7 @@
     if (error) {
       alert("Erreur connexion : " + error.message);
     } else {
-      window.location.href = "https://younes557-a.github.io/pap/index.html";
+      window.location.href = "index.html";
     }
   }
 
@@ -57,7 +57,7 @@
     if (error) {
       alert("Erreur inscription : " + error.message);
     } else {
-      alert("✅ Compte créé. Vérifie ton email pour confirmer l’inscription.");
+      alert("✅ Compte créé. Vérifie ton email pour confirmer.");
     }
   }
 
